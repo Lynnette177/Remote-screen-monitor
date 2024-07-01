@@ -147,6 +147,7 @@
   <ItemGroup>
     <ClInclude Include="crypto.h" />
     <ClInclude Include="Drawing.h" />
+    <ClInclude Include="dx11imageloader.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="ImGui\imconfig.h" />
     <ClInclude Include="ImGui\imgui.h" />
@@ -158,6 +159,7 @@
     <ClInclude Include="ImGui\imstb_truetype.h" />
     <ClInclude Include="includes.h" />
     <ClInclude Include="key_gen.hpp" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="structures.hpp" />
     <ClInclude Include="UI.h" />
   </ItemGroup>

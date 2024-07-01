@@ -89,6 +89,12 @@
     <ClInclude Include="UI.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="dx11imageloader.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="server.hpp">

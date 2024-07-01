@@ -3,6 +3,8 @@
 #define DRAWING_H
 #include "includes.h"
 #include "global.h"
+#include "dx11imageloader.h"
+#include "UI.h"
 class Drawing
 {
 private:
@@ -14,7 +16,7 @@ private:
 public:
 	static void Active();
 	static bool isActive();
-	static void Draw();
+	static void Draw(ID3D11Device* pd3ddevice);
 };
 
 LPCSTR Drawing::lpWindowName = "ImGui Standalone";
@@ -32,7 +34,7 @@ bool Drawing::isActive()
 	return bDraw == true;
 }
 
-void Drawing::Draw()
+void Drawing::Draw(ID3D11Device* pd3ddevice)
 {
 	if (isActive())
 	{
@@ -42,7 +44,15 @@ void Drawing::Draw()
 		{
 			ImGui::Text("Create your own menu.");
 			for (void* v : all_connected_clients) {
-				ImGui::Text(((ClientHandler*)v)->client_info.c_str());
+				ClientHandler* now_draw_client = (ClientHandler*)v;
+				ImGui::Text(now_draw_client->client_info.c_str());
+				if (!now_draw_client->generated_new_texture) {
+					Texture thumb(pd3ddevice);
+					now_draw_client->thumb_texture = thumb;
+					now_draw_client->thumb_texture.LoadTextureFromMemory(now_draw_client->data_buffer.data(),now_draw_client->data_buffer.size());
+					now_draw_client->generated_new_texture = true;
+				}
+				ImGui::Image(now_draw_client->thumb_texture.GetTexture(), ImVec2(240, 100)); // ªÊ÷∆Õº∆¨
 			}
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		}

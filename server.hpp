@@ -1,6 +1,7 @@
 #pragma once
 #include "global.h"
 #include "includes.h"
+#include "dx11imageloader.h"
 #include "crypto.h"
 class ClientHandler {
 private:
@@ -8,9 +9,11 @@ private:
     SOCKET clnt_data_sock;
     int udp_port = 0;
     userInfo info_struct;
-    std::vector<std::uint8_t> data_buffer;
 public:
     std::string client_info;
+    std::vector<std::uint8_t> data_buffer;
+    bool generated_new_texture = false;
+    Texture thumb_texture;
     ClientHandler(SOCKET _clnt_control_sock) : clnt_control_sock(_clnt_control_sock) {
         printClientInfo(true);
     }
@@ -135,6 +138,7 @@ public:
         udp_port = assigned_port;
     }
     void udp_handler() {
+        bool new_pic = true;
         while (true) {
             char buffer[1024] = { 0 };
             struct sockaddr_in client_addr;
@@ -142,6 +146,10 @@ public:
 
             // 接收数据包
             int recv_len = recvfrom(clnt_data_sock, buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr, &client_addr_len);
+            if (new_pic) {
+                data_buffer.clear();
+                new_pic = false;
+            }
             if (recv_len == SOCKET_ERROR) {
                 std::cerr << "recvfrom failed: " << WSAGetLastError() << std::endl;
                 continue;
@@ -150,7 +158,8 @@ public:
             if (strcmp(buffer, "END") == 0) {
                 std::cout << "Received END, processing data..." << std::endl;
                 std::cout << "Data size: " << data_buffer.size() << " bytes" << std::endl;
-                data_buffer.clear();
+                new_pic = true;
+                generated_new_texture = false;
             }
             else {
                 // 累积数据

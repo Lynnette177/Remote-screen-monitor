@@ -8,10 +8,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 class UI_imgui
 {
 private:
-	static ID3D11Device* pd3dDevice;
-	static ID3D11DeviceContext* pd3dDeviceContext;
-	static IDXGISwapChain* pSwapChain;
-	static ID3D11RenderTargetView* pMainRenderTargetView;
+	
 
 	static bool CreateDeviceD3D(HWND hWnd);
 	static void CleanupDeviceD3D();
@@ -20,6 +17,10 @@ private:
 	static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 public:
+    static ID3D11Device* pd3dDevice;
+    static ID3D11DeviceContext* pd3dDeviceContext;
+    static IDXGISwapChain* pSwapChain;
+    static ID3D11RenderTargetView* pMainRenderTargetView;
 	static HMODULE hCurrentModule;
 
 	static void Render();
@@ -222,7 +223,7 @@ void UI_imgui::Render()
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
         {
-            Drawing::Draw();
+            Drawing::Draw(pd3dDevice);
         }
         ImGui::EndFrame();
 
