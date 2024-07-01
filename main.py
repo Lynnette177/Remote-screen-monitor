@@ -3,9 +3,14 @@ from crypto_util import *
 
 public_key_pem_recvd = ""
 server_secret = "askfkhAOSIDIUHkljdhfskjgMNCMZPSDFI2KASDa1"
+tcp_sock = None
+udp_port = None
 
-def tcp_client(ip, port):
+
+def tcp_shake_hand(ip, port):
     global public_key_pem_recvd
+    global tcp_sock
+    global udp_port
     # 创建TCP/IP套接字
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # 连接服务器
@@ -46,18 +51,33 @@ def tcp_client(ip, port):
                 print(decrypted_result)
                 break
 
-        print(decrypted_result)
-        if decrypted_result.decode() == server_secret:
+        parts = decrypted_result.decode().split(';')
+        part1 = parts[0]
+        part2 = parts[1]
+        if part1 == server_secret:
             sock.sendall(aes_encrypt(b"Correct").encode())
+            tcp_sock = sock
+            udp_port = int(part2)
+            return True
+        else:
+            sock.sendall(aes_encrypt(b"Failed.").encode())
+            return False
 
 
-    finally:
-        # 关闭连接
-        print("关闭连接")
+    except Exception as e:
+        print(f"发送错误，关闭套接字{e}")
         sock.close()
+        return False
 
+def close_tcp():
+    try:
+        tcp_sock.close()
+        return True
+    except:
+        return False
 
 if __name__ == "__main__":
-    tcp_client('127.0.0.1', 5005)
-# 使用示例
-#
+    tcp_shake_hand('127.0.0.1', 5005)
+    print(udp_port)
+    close_tcp()
+
