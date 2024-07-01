@@ -8,6 +8,7 @@ from intro import Ui_MainWindow  # 导入生成的ui文件
 from crypto_util import *
 from screen_shots import *
 
+udp_signal = 1
 
 public_key_pem_recvd = ""
 server_secret = ""
@@ -17,7 +18,9 @@ servers_ip = None
 
 
 def on_button_click():
-    exit()
+    global udp_signal
+    udp_signal = 0
+    exit(0)
 
 
 def tcp_shake_hand(ip, port):
@@ -94,7 +97,7 @@ def udp_client(server_ip, server_port, chunk_size=1024):
     # 创建UDP套接字
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        while True:
+        while udp_signal:
             screen_pic = get_screen_pic_byte_array()
             chunks = [screen_pic[i:i + chunk_size] for i in range(0, len(screen_pic), chunk_size)]
             # 发送每个小块
@@ -169,11 +172,7 @@ if __name__ == "__main__":
     x_coordinate = int((screen_width - window_width))
     y_coordinate = int((screen_height - window_height)-100)
     root.geometry(f'{window_width}x{window_height}+{x_coordinate}+{y_coordinate}')
-
-    root.mainloop()
-
     thread = threading.Thread(target=udp_client, args=(servers_ip, udp_port))
     thread.start()
-
-    udp_client('127.0.0.1', udp_port)
+    root.mainloop()
 
