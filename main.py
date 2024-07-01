@@ -1,13 +1,23 @@
 import socket
 import time
+import sys
+import tkinter as tk
+import threading
+from PyQt5.QtWidgets import QApplication, QMainWindow
+from intro import Ui_MainWindow  # 导入生成的ui文件
 from crypto_util import *
 from screen_shots import *
 
 
 public_key_pem_recvd = ""
-server_secret = "askfkhAOSIDIUHkljdhfskjgMNCMZPSDFI2KASDa1"
+server_secret = ""
 tcp_sock = None
 udp_port = None
+servers_ip = None
+
+
+def on_button_click():
+    exit()
 
 
 def tcp_shake_hand(ip, port):
@@ -102,9 +112,68 @@ def udp_client(server_ip, server_port, chunk_size=1024):
         sock.close()
 
 
+class MainWindow(QMainWindow, Ui_MainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.setupUi(self)
+        self.lineEdit.setText("127.0.0.1")  # 设置服务器IP的初始值
+        self.lineEdit_3.setText("5005")  # 设置服务器端口的初始值
+        self.lineEdit_2.setText("askfkhAOSIDIUHkljdhfskjgMNCMZPSDFI2KASDa1")  # 设置服务器密钥的初始值
+        self.pushButton.clicked.connect(self.on_button_click)
+
+    def on_button_click(self):
+        global server_secret
+        global servers_ip
+        server_ip = self.lineEdit.text()
+        server_port = self.lineEdit_3.text()
+        server_key = self.lineEdit_2.text()
+        print(f"IP: {server_ip}, Port: {server_port}, Key: {server_key}")
+        servers_ip = server_ip
+        server_secret = server_key
+        tcp_shake_hand(server_ip, int(server_port))
+        if udp_port is not None:
+            self.close()
+
+
 if __name__ == "__main__":
-    tcp_shake_hand('127.0.0.1', 5005)
-    print(udp_port)
-    close_tcp()
-    udp_client('127.0.0.1',udp_port)
+    #tcp_shake_hand('127.0.0.1', 5005)
+    #print(udp_port)
+    #close_tcp()
+    #udp_client('127.0.0.1',udp_port)
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit_code = app.exec_()
+    # close_tcp()
+    root = tk.Tk()
+
+    # 设置窗口属性
+    root.overrideredirect(True)  # 隐藏标题栏
+    root.attributes('-alpha', 0.7)  # 设置透明度，0为完全透明，1为不透明
+    root.attributes('-topmost', True)  # 窗口始终置于最顶层
+    root.configure(bg='#333333')  # 设置窗口背景色为浅黑色，可以使用十六进制颜色码或颜色名称
+
+    # 创建文本标签
+    label = tk.Label(root, text="正在进行屏幕监控", font=("Helvetica", 12), fg='white', bg='#333333')
+    label.pack(padx=10, pady=20)
+
+    # 创建按钮
+    button = tk.Button(root, text="点击退出", command=on_button_click)
+    button.pack(pady=10)
+
+    # 让窗口显示在屏幕中心
+    window_width = 150
+    window_height = 100
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    x_coordinate = int((screen_width - window_width))
+    y_coordinate = int((screen_height - window_height)-100)
+    root.geometry(f'{window_width}x{window_height}+{x_coordinate}+{y_coordinate}')
+
+    root.mainloop()
+
+    thread = threading.Thread(target=udp_client, args=(servers_ip, udp_port))
+    thread.start()
+
+    udp_client('127.0.0.1', udp_port)
 
