@@ -1,4 +1,5 @@
 #pragma once
+#include "global.h"
 #include "includes.h"
 #include "crypto.h"
 class ClientHandler {
@@ -9,6 +10,7 @@ private:
     userInfo info_struct;
     std::vector<std::uint8_t> data_buffer;
 public:
+    std::string client_info;
     ClientHandler(SOCKET _clnt_control_sock) : clnt_control_sock(_clnt_control_sock) {
         printClientInfo(true);
     }
@@ -42,6 +44,9 @@ public:
                 std::cout << "New Connection Established. Client IP: " << ip << ", Port: " << ntohs(addr.sin_port) << "\n";
             else
                 std::cout << "Client IP: " << ip << ", Port: " << ntohs(addr.sin_port) << ":";
+            client_info = ip;
+            client_info += ":";
+            client_info += std::to_string(ntohs(addr.sin_port));
         }
         else {
             std::cerr << "Error getting client info" << std::endl;
@@ -89,6 +94,7 @@ public:
                 return;
             }
             else {
+                all_connected_clients.push_back(this);
                 udp_handler();
             }
             closesocket(clnt_control_sock);

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <thread>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -22,29 +23,14 @@
 #include <sstream>
 #include "structures.hpp"
 #pragma comment(lib, "Ws2_32.lib")
-
-
+#include <Windows.h>
+#include <tchar.h>
+#include "d3d9.h"
+#include "d3d11.h"
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_dx11.h"
+#include "ImGui/imgui_impl_win32.h"
 
 #define KEY_BUFFER_SIZE 2048
 #define RSA_KEY_LENGTH 2048
 #define RSA_PLAINTEXT_SIZE 128
-std::string server_info = "askfkhAOSIDIUHkljdhfskjgMNCMZPSDFI2KASDa1";
-
-char private_key[KEY_BUFFER_SIZE] = { 0 };
-char public_key[KEY_BUFFER_SIZE] = { 0 };
-
-void parse_userInfo(userInfo* output, std::string receive_str) {
-    // 用于存储分割后的子字符串
-    std::string username, password, key, iv;
-    // 创建一个字符串输入流
-    std::istringstream ss(receive_str);
-    // 使用getline函数和分号作为分隔符进行分割
-    std::getline(ss, username, ';');
-    std::getline(ss, password, ';');
-    std::getline(ss, key, ';');
-    std::getline(ss, iv, ';');
-    output->name = username;
-    output->password = password;
-    output->aes_key = key;
-    output->aes_iv = iv;
-}
