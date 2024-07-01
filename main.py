@@ -107,7 +107,7 @@ def udp_client(server_ip, server_port, chunk_size=1024):
             end_message = b'END'
             sent = sock.sendto(end_message, (server_ip, server_port))
 
-            time.sleep(1)
+            time.sleep(0.03)
 
     finally:
         # 关闭套接字
