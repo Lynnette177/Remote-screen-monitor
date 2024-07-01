@@ -1,26 +1,11 @@
 #pragma once
 #include "includes.h"
 #include "crypto.h"
-
-void parse_userInfo(userInfo* output, std::string receive_str) {
-    // 用于存储分割后的子字符串
-    std::string username, password, key, iv;
-    // 创建一个字符串输入流
-    std::istringstream ss(receive_str);
-    // 使用getline函数和分号作为分隔符进行分割
-    std::getline(ss, username, ';');
-    std::getline(ss, password, ';');
-    std::getline(ss, key, ';');
-    std::getline(ss, iv, ';');
-    output->name = username;
-    output->password = password;
-    output->aes_key = key;
-    output->aes_iv = iv;
-}
 class ClientHandler {
 private:
     SOCKET clnt_control_sock;
     SOCKET clnt_data_sock;
+    int udp_port = 0;
     userInfo info_struct;
 public:
     ClientHandler(SOCKET _clnt_control_sock) : clnt_control_sock(_clnt_control_sock) {
@@ -64,6 +49,7 @@ public:
     void handle() {//控制信息处理线程
         try {
             //对连接上的客户端发送公钥，让客户端回复加密后的用户名和密码，解密并验证。
+            bool authorized = false;
             char buffer[1024] = {};
             int bytes_received;
             printClientInfo();
@@ -72,7 +58,9 @@ public:
                 std::string plain_text = rsa_decrypt_base(buffer);
                 parse_userInfo(&info_struct,plain_text);
                 show_private_info();
-                std::string cipher_mesg = aes_encrypt_base(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)server_info.c_str());
+                init_udp_server();
+                std::string info_to_send = server_info + ";" + std::to_string(udp_port);
+                std::string cipher_mesg = aes_encrypt_base(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)info_to_send.c_str());
                 std::cout << cipher_mesg;
                 send_control_message(cipher_mesg.c_str());
                 memset(buffer, 0, 1024);//处理结束清空缓冲区
@@ -85,24 +73,84 @@ public:
                 unsigned char* ptext = NULL;
                 aes_decrypt_base_to_bytes(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)buffer, &ptext);
                 delete[]  ptext;
-                
                 if (plain_text != "Correct") {
                     printf("客户端认证失败\n");
                     return;
                 }
+                else {
+                    printf("客户端认证成功\n");
+                    authorized = true;
+                }
                 memset(buffer, 0, 1024);//处理结束清空缓冲区
             }
-            printf("客户端认证成功\n");
+            if (!authorized) {
+                closesocket(clnt_control_sock);
+                return;
+            }
+            else {
+                udp_handler();
+            }
             closesocket(clnt_control_sock);
         }
         catch (const std::exception& e) {
             std::cerr << "Exception in client_handler: " << e.what() << std::endl;
         }
     }
+    void init_udp_server() {
+        SOCKET udp_serv_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        if (udp_serv_sock == INVALID_SOCKET) {
+            std::cerr << "Socket creation failed." << std::endl;
+            return;
+        }
+
+        struct sockaddr_in serv_addr;
+        memset(&serv_addr, 0, sizeof(serv_addr));
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_addr.s_addr = INADDR_ANY;
+        serv_addr.sin_port = htons(0);
+
+        // 绑定套接字到指定端口
+        int iResult = bind(udp_serv_sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+        if (iResult == SOCKET_ERROR) {
+            std::cerr << "Bind failed: " << WSAGetLastError() << std::endl;
+            return;
+        }
+        socklen_t addr_len = sizeof(serv_addr);
+        iResult = getsockname(udp_serv_sock, (struct sockaddr*)&serv_addr, &addr_len);
+        if (iResult == SOCKET_ERROR) {
+            std::cerr << "getsockname failed: " << WSAGetLastError() << std::endl;
+            return;
+        }
+
+        int assigned_port = ntohs(serv_addr.sin_port);
+        std::cout << "Server Started and listening on port " << assigned_port << std::endl;
+        clnt_data_sock = udp_serv_sock;
+        udp_port = assigned_port;
+    }
+    void udp_handler() {
+        while (true) {
+            char buffer[1024];
+            struct sockaddr_in client_addr;
+            int client_addr_len = sizeof(client_addr);
+
+            // 接收数据包
+            int recv_len = recvfrom(clnt_data_sock, buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr, &client_addr_len);
+            if (recv_len == SOCKET_ERROR) {
+                std::cerr << "recvfrom failed: " << WSAGetLastError() << std::endl;
+                continue;
+            }
+
+            char client_ip[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
+            std::cout << "Received packet from " << client_ip << ":" << ntohs(client_addr.sin_port) << std::endl;
+            buffer[recv_len] = '\0'; // 将接收到的数据视为字符串
+            std::cout << "Data: " << buffer << std::endl;
+
+            // 你可以在这里发送响应数据包，如果需要
+            // sendto(serv_sock, buffer, recv_len, 0, (struct sockaddr*)&client_addr, client_addr_len);
+        }
+    }
 };
-
-
-
 class Server {
 private:
     const wchar_t* ip;
