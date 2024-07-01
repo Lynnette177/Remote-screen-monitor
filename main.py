@@ -1,5 +1,8 @@
 import socket
+import time
 from crypto_util import *
+from screen_shots import *
+
 
 public_key_pem_recvd = ""
 server_secret = "askfkhAOSIDIUHkljdhfskjgMNCMZPSDFI2KASDa1"
@@ -76,8 +79,32 @@ def close_tcp():
     except:
         return False
 
+
+def udp_client(server_ip, server_port, chunk_size=1024):
+    # 创建UDP套接字
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        while True:
+            screen_pic = get_screen_pic_byte_array()
+            chunks = [screen_pic[i:i + chunk_size] for i in range(0, len(screen_pic), chunk_size)]
+            # 发送每个小块
+            for chunk in chunks:
+                sent = sock.sendto(chunk, (server_ip, server_port))
+            # 发送一个结束包，内容可以是一个特定的标识符“END”
+            end_message = b'END'
+            sent = sock.sendto(end_message, (server_ip, server_port))
+
+            time.sleep(1)
+
+    finally:
+        # 关闭套接字
+        print("Closing socket")
+        sock.close()
+
+
 if __name__ == "__main__":
     tcp_shake_hand('127.0.0.1', 5005)
     print(udp_port)
     close_tcp()
+    udp_client('127.0.0.1',udp_port)
 
