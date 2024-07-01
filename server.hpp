@@ -163,7 +163,9 @@ public:
             }
             else {
                 // ÀÛ»ýÊý¾Ý
-                data_buffer.insert(data_buffer.end(), buffer, buffer + recv_len);
+                unsigned char* plain = NULL;
+                int plain_length = aes_decrypt_base_to_bytes(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)buffer, &plain);
+                data_buffer.insert(data_buffer.end(), (char *)plain, (char * )plain + plain_length);
             }
             //char client_ip[INET_ADDRSTRLEN];
             //inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);

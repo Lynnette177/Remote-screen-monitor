@@ -212,7 +212,7 @@ std::string aes_decrypt_base_to_string(std::string key, std::string iv, unsigned
     return std::string((char *)plaintext);
 }
 //解码base64然后AES解密 拷贝到数组中。必须要记得释放内存
-void aes_decrypt_base_to_bytes(std::string key, std::string iv, unsigned char* ciphertext,unsigned char** plaintext_ptr) {
+int aes_decrypt_base_to_bytes(std::string key, std::string iv, unsigned char* ciphertext,unsigned char** plaintext_ptr) {
     std::string decoded_key = base64Decode(key);
     std::string decoded_iv = base64Decode(iv);
     std::string base64_decoded = base64Decode(std::string((char*)ciphertext));
@@ -225,7 +225,7 @@ void aes_decrypt_base_to_bytes(std::string key, std::string iv, unsigned char* c
     *plaintext_ptr = new unsigned char[length+10];
     memset(*plaintext_ptr, 0, length + 10);
     memcpy_s(*plaintext_ptr, length, plaintext, length);
-    return;
+    return length;
 }
 
 #pragma warning(pop)
