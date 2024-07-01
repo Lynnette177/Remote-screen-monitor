@@ -11,9 +11,9 @@ public:
         printClientInfo(true);
     }
 
-    bool send_message(const char* message, int command = 0) {
+    bool send_control_message(const char* message) {
         try {
-            
+            int iResult = send(clnt_control_sock, message, strlen(message), 0);
         }
         catch (const std::exception& e) {
             std::cerr << "Exception: " << e.what() << std::endl;
@@ -45,6 +45,8 @@ public:
         try {
             char buffer[1024] = {};
             int bytes_received;
+            printClientInfo();
+            send_control_message(public_key);
             while ((bytes_received = recv(clnt_control_sock, buffer, sizeof(buffer), 0)) > 0) {
                 memset(buffer, 0, 1024);//处理结束清空缓冲区
             }

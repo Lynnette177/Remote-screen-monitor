@@ -23,3 +23,6 @@
 #define KEY_BUFFER_SIZE 2048
 #define RSA_KEY_LENGTH 2048
 #define RSA_PLAINTEXT_SIZE 128
+
+char private_key[KEY_BUFFER_SIZE] = { 0 };
+char public_key[KEY_BUFFER_SIZE] = { 0 };
