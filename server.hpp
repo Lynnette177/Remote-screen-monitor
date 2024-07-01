@@ -1,19 +1,41 @@
 #pragma once
 #include "includes.h"
+#include "crypto.h"
 
+void parse_userInfo(userInfo* output, std::string receive_str) {
+    // 用于存储分割后的子字符串
+    std::string username, password, key, iv;
+    // 创建一个字符串输入流
+    std::istringstream ss(receive_str);
+    // 使用getline函数和分号作为分隔符进行分割
+    std::getline(ss, username, ';');
+    std::getline(ss, password, ';');
+    std::getline(ss, key, ';');
+    std::getline(ss, iv, ';');
+    output->name = username;
+    output->password = password;
+    output->aes_key = key;
+    output->aes_iv = iv;
+}
 class ClientHandler {
 private:
     SOCKET clnt_control_sock;
     SOCKET clnt_data_sock;
-
+    userInfo info_struct;
 public:
     ClientHandler(SOCKET _clnt_control_sock) : clnt_control_sock(_clnt_control_sock) {
         printClientInfo(true);
     }
-
+    void show_private_info() {//展示用户私有信息调试用
+        std::cout << "Username: " << info_struct.name << std::endl;
+        std::cout << "Password: " << info_struct.password << std::endl;
+        std::cout << "Key: " << info_struct.aes_key << std::endl;
+        std::cout << "IV: " << info_struct.aes_iv << std::endl;
+    }
     bool send_control_message(const char* message) {
         try {
             int iResult = send(clnt_control_sock, message, strlen(message), 0);
+;           send(clnt_control_sock, "\x01", 1, 0);
         }
         catch (const std::exception& e) {
             std::cerr << "Exception: " << e.what() << std::endl;
@@ -24,8 +46,7 @@ public:
             return false;
         }
     }
-
-    void printClientInfo(bool init = false) {
+    void printClientInfo(bool init = false) {//打印客户端连接信息
         struct sockaddr_in addr;
         socklen_t addr_len = sizeof(addr);
         if (getpeername(clnt_control_sock, (struct sockaddr*)&addr, &addr_len) == 0) {
@@ -40,17 +61,38 @@ public:
             std::cerr << "Error getting client info" << std::endl;
         }
     }
-
-    void handle() {
+    void handle() {//控制信息处理线程
         try {
+            //对连接上的客户端发送公钥，让客户端回复加密后的用户名和密码，解密并验证。
             char buffer[1024] = {};
             int bytes_received;
             printClientInfo();
             send_control_message(public_key);
-            while ((bytes_received = recv(clnt_control_sock, buffer, sizeof(buffer), 0)) > 0) {
+            if ((bytes_received = recv(clnt_control_sock, buffer, sizeof(buffer), 0)) > 0) {
+                std::string plain_text = rsa_decrypt_base(buffer);
+                parse_userInfo(&info_struct,plain_text);
+                show_private_info();
+                std::string cipher_mesg = aes_encrypt_base(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)server_info.c_str());
+                std::cout << cipher_mesg;
+                send_control_message(cipher_mesg.c_str());
                 memset(buffer, 0, 1024);//处理结束清空缓冲区
             }
-
+            if ((bytes_received = recv(clnt_control_sock, buffer, sizeof(buffer), 0)) > 0) {
+                std::cout << "\n" << buffer << "\n";
+                //两种解密方式 example:
+                std::string plain_text = aes_decrypt_base_to_string(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)buffer);
+                
+                unsigned char* ptext = NULL;
+                aes_decrypt_base_to_bytes(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)buffer, &ptext);
+                delete[]  ptext;
+                
+                if (plain_text != "Correct") {
+                    printf("客户端认证失败\n");
+                    return;
+                }
+                memset(buffer, 0, 1024);//处理结束清空缓冲区
+            }
+            printf("客户端认证成功\n");
             closesocket(clnt_control_sock);
         }
         catch (const std::exception& e) {

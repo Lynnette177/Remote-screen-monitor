@@ -5,9 +5,6 @@
 int main()
 {
     keygen(private_key,public_key);
-    printf("%s\n%s", private_key, public_key);
-    unsigned char plaintext[RSA_PLAINTEXT_SIZE] = "test\0";
-    test(public_key, private_key,plaintext, RSA_PLAINTEXT_SIZE);
 
     const wchar_t* Server_Address = L"127.0.0.1";
     int Server_Port = 5005;
@@ -17,7 +14,6 @@ int main()
     while (!GetAsyncKeyState(VK_F1)) {}
     server.stop();
     return 0;
-
 
     system("pause");
 }

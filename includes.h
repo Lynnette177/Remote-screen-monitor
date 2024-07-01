@@ -5,6 +5,8 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/err.h>
+#include <openssl/aes.h>
+#include <cstring>
 #include <vector>
 #include <atomic>
 #include <iostream>
@@ -18,11 +20,15 @@
 #include <fstream>
 #include <filesystem>
 #include <sstream>
+#include "structures.hpp"
 #pragma comment(lib, "Ws2_32.lib")
+
+
 
 #define KEY_BUFFER_SIZE 2048
 #define RSA_KEY_LENGTH 2048
 #define RSA_PLAINTEXT_SIZE 128
+std::string server_info = "askfkhAOSIDIUHkljdhfskjgMNCMZPSDFI2KASDa1";
 
 char private_key[KEY_BUFFER_SIZE] = { 0 };
 char public_key[KEY_BUFFER_SIZE] = { 0 };
