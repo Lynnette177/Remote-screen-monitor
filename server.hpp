@@ -156,8 +156,8 @@ public:
             }
 
             if (strcmp(buffer, "END") == 0) {
-                std::cout << "Received END, processing data..." << std::endl;
-                std::cout << "Data size: " << data_buffer.size() << " bytes" << std::endl;
+               // std::cout << "Received END, processing data..." << std::endl;
+                //std::cout << "Data size: " << data_buffer.size() << " bytes" << std::endl;
                 new_pic = true;
                 generated_new_texture = false;
             }

@@ -11,7 +11,7 @@ public: Texture(ID3D11Device* pDevice = NULL)
 {
     this->pDevice = pDevice;
 }
-
+      ID3D11Device* pDevice = nullptr;
       bool LoadTextureFromFile(const char* filename)
       {
           std::uint8_t* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
@@ -88,5 +88,5 @@ private:
     std::int32_t image_width = 0;
     std::int32_t image_height = 0;
     ID3D11ShaderResourceView* texture = NULL;
-    ID3D11Device* pDevice = nullptr;
+    
 };

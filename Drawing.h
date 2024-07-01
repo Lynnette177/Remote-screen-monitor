@@ -47,8 +47,9 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 				ClientHandler* now_draw_client = (ClientHandler*)v;
 				ImGui::Text(now_draw_client->client_info.c_str());
 				if (!now_draw_client->generated_new_texture) {
-					Texture thumb(pd3ddevice);
-					now_draw_client->thumb_texture = thumb;
+					
+					if (now_draw_client->thumb_texture.pDevice != pd3ddevice)
+						now_draw_client->thumb_texture.pDevice = pd3ddevice;
 					now_draw_client->thumb_texture.LoadTextureFromMemory(now_draw_client->data_buffer.data(),now_draw_client->data_buffer.size());
 					now_draw_client->generated_new_texture = true;
 				}
