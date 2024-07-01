@@ -7,6 +7,7 @@ private:
     SOCKET clnt_data_sock;
     int udp_port = 0;
     userInfo info_struct;
+    std::vector<std::uint8_t> data_buffer;
 public:
     ClientHandler(SOCKET _clnt_control_sock) : clnt_control_sock(_clnt_control_sock) {
         printClientInfo(true);
@@ -129,7 +130,7 @@ public:
     }
     void udp_handler() {
         while (true) {
-            char buffer[1024];
+            char buffer[1024] = { 0 };
             struct sockaddr_in client_addr;
             int client_addr_len = sizeof(client_addr);
 
@@ -140,14 +141,22 @@ public:
                 continue;
             }
 
-            char client_ip[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
-            std::cout << "Received packet from " << client_ip << ":" << ntohs(client_addr.sin_port) << std::endl;
-            buffer[recv_len] = '\0'; // 将接收到的数据视为字符串
-            std::cout << "Data: " << buffer << std::endl;
+            if (strcmp(buffer, "END") == 0) {
+                std::cout << "Received END, processing data..." << std::endl;
+                std::cout << "Data size: " << data_buffer.size() << " bytes" << std::endl;
+                data_buffer.clear();
+            }
+            else {
+                // 累积数据
+                data_buffer.insert(data_buffer.end(), buffer, buffer + recv_len);
+            }
+            //char client_ip[INET_ADDRSTRLEN];
+            //inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
+            // std::cout << "Received packet from " << client_ip << ":" << ntohs(client_addr.sin_port) << std::endl;
+             //std::cout << "Data: " << buffer << std::endl;
 
-            // 你可以在这里发送响应数据包，如果需要
-            // sendto(serv_sock, buffer, recv_len, 0, (struct sockaddr*)&client_addr, client_addr_len);
+             // 你可以在这里发送响应数据包，如果需要
+             // sendto(serv_sock, buffer, recv_len, 0, (struct sockaddr*)&client_addr, client_addr_len);
         }
     }
 };
