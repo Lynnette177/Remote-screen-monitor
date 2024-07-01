@@ -93,7 +93,7 @@ def close_tcp():
         return False
 
 
-def udp_client(server_ip, server_port, chunk_size=1024):
+def udp_client(server_ip, server_port, chunk_size=700):
     # 创建UDP套接字
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -102,7 +102,9 @@ def udp_client(server_ip, server_port, chunk_size=1024):
             chunks = [screen_pic[i:i + chunk_size] for i in range(0, len(screen_pic), chunk_size)]
             # 发送每个小块
             for chunk in chunks:
-                sent = sock.sendto(chunk, (server_ip, server_port))
+                encrypted_chuck = aes_encrypt(chunk)
+                sent = sock.sendto(encrypted_chuck.encode(), (server_ip, server_port))
+                print(sent)
             # 发送一个结束包，内容可以是一个特定的标识符“END”
             end_message = b'END'
             sent = sock.sendto(end_message, (server_ip, server_port))
