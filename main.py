@@ -71,7 +71,9 @@ def tcp_shake_hand(ip, port):
         part1 = parts[0]
         part2 = parts[1]
         if part1 == server_secret:
-            sock.sendall(aes_encrypt(b"Correct").encode())
+            width, height = get_w_h()
+            aspect_ratio = width/height
+            sock.sendall(aes_encrypt(f"Correct;{aspect_ratio:.2f}".encode()).encode())
             tcp_sock = sock
             udp_port = int(part2)
             return True
@@ -105,8 +107,8 @@ def udp_client(server_ip, server_port, chunk_size=700):
                 encrypted_chuck = aes_encrypt(chunk)
                 sent = sock.sendto(encrypted_chuck.encode(), (server_ip, server_port))
                 print(sent)
-            # 发送一个结束包，内容可以是一个特定的标识符“END”
-            end_message = b'END'
+            # 发送一个结束包，内容可以是一个特定的标识符“-!END”
+            end_message = b'-!END'
             sent = sock.sendto(end_message, (server_ip, server_port))
 
             time.sleep(0.03)

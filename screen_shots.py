@@ -3,6 +3,11 @@ import pyautogui
 import io
 
 
+def get_w_h():  # 获取屏幕宽高
+    screenshot = pyautogui.screenshot()
+    return screenshot.width, screenshot.height
+
+
 def get_screen_pic_byte_array():
     # 获取截图
     screenshot = pyautogui.screenshot()
