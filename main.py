@@ -25,7 +25,7 @@ height = 1080
 def on_button_click():
     global udp_signal
     udp_signal = 0
-    exit(0)
+    sys.exit(0)
 
 
 def tcp_shake_hand(ip, port):
