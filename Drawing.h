@@ -38,21 +38,26 @@ bool Drawing::isActive()
 
 void Drawing::Draw(ID3D11Device* pd3ddevice)
 {
+	static bool switched = true;
 	if (isActive())
 	{
 		if (GetAsyncKeyState(VK_ESCAPE)) {
 			FullWindow = false;
 			reset_Frame_rate = true;
+			switched = true;
 		}
 		static int client_number;
 		if (!FullWindow) {
-		    ImGui::SetNextWindowSize(vWindowSize, ImGuiCond_Once);
-		    ImGui::SetNextWindowBgAlpha(1.0f);
+			if (switched) {
+				ImGui::SetNextWindowSize(vWindowSize);
+				ImGui::SetNextWindowBgAlpha(1.0f);
+				switched = false;
+			}
 			ImGui::Begin(lpWindowName, &bDraw, WindowFlags);
 			{
 				ImGui::Text(u8"已有%d个客户端建立连接。", client_number);
 				client_number = 0;
-				for (void* v : all_connected_clients) {
+				for (const auto& v : all_connected_clients) {
 					ClientHandler* now_draw_client = (ClientHandler*)v;
 					now_draw_client->image_lock.lock();
 					if (reset_Frame_rate) {
@@ -82,10 +87,14 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 					else
 						ImGui::Text((now_draw_client->client_info + u8" 离线").c_str());
 					ImGui::Image(now_draw_client->thumb_texture.GetTexture(), ImVec2(now_draw_client->aspect_ratio * 100, 100)); // 绘制图片
-					ImGui::SliderInt(u8"监控帧率", &now_draw_client->frame_rate, 1, 100);
-					if (ImGui::Button(u8"全屏")) {
+					std::ostringstream oss,buttonlable;
+					oss << u8"监控帧率 " << client_number;
+					buttonlable << u8"全屏客户" << client_number;
+					ImGui::SliderInt(oss.str().c_str(), &((ClientHandler*)v)->frame_rate, 1, 100);
+					if (ImGui::Button(buttonlable.str().c_str())) {
 						FullWindow = true;
-						MainMonitoring = now_draw_client;
+						switched = true;
+						MainMonitoring = (ClientHandler*)v;
 					}
 					now_draw_client->image_lock.unlock();
 				}
@@ -94,15 +103,18 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 			}
 		}
 		else {
-			ImGui::SetNextWindowSize(ImVec2(client_width, client_height));
-			ImGui::SetNextWindowPos(ImVec2(0, 0));
+			if (switched) {
+				ImGui::SetNextWindowSize(ImVec2(client_width, client_height));
+				ImGui::SetNextWindowPos(ImVec2(0, 0));
+				switched = false;
+			}
 			ImGui::SetNextWindowBgAlpha(1.0f);
 			ImGui::Begin(lpWindowName, &bDraw, WindowFlags);
 			{
 				bool still_online = false;
 				for (void* v : all_connected_clients) {
 					((ClientHandler*)v)->image_lock.lock();
-					if (v == MainMonitoring) {
+					if (v == (void* )MainMonitoring) {
 						still_online = true;
 						MainMonitoring->frame_rate = 30;
 						MainMonitoring->main_monitoring = true;
@@ -146,12 +158,14 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 							printf("Clicked at : (%d, %d)\n",  relative_x, relative_y);
 						}
 					}
-					else MainMonitoring->frame_rate = 1;
+					else ((ClientHandler*)v)->frame_rate = 1;
 					((ClientHandler*)v)->image_lock.unlock();
 				}
 				if (!still_online) {
 					MainMonitoring = NULL;
 					FullWindow = false;
+					switched = true;
+					reset_Frame_rate = true;
 				}
 			}
 		}
