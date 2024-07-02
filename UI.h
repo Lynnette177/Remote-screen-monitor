@@ -149,6 +149,15 @@ LRESULT WINAPI UI_imgui::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
 
 void UI_imgui::Render()
 {
+    HWND hd = GetDesktopWindow();
+    // 方法一
+    RECT rect;
+    // 只获得窗口客户区的大小
+    GetClientRect(hd, &rect);
+    client_width = (rect.right - rect.left);
+    client_height = (rect.bottom - rect.top);
+    std::cout << "client width:" << client_width << std::endl;
+    std::cout << "client height:" << client_height << std::endl;
     ImGui_ImplWin32_EnableDpiAwareness();
     const WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _T("Screen Monitor"), nullptr };
     ::RegisterClassEx(&wc);

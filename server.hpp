@@ -14,6 +14,7 @@ private:
 public:
     std::string client_info;
     int frame_rate = 10;
+    bool main_monitoring = false;
     std::vector<std::uint8_t> data_buffer;
     bool generated_new_texture = false;
     Texture thumb_texture;
@@ -234,7 +235,10 @@ public:
                 std::string plain_text = aes_decrypt_base_to_string(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)buffer);
                 std::cout << "Received Decryptied: " << plain_text << std::endl;
                 online = true;
-                send_control_message(aes_encrypt_base(info_struct.aes_key, info_struct.aes_iv,(unsigned char*)std::to_string(frame_rate).c_str()).c_str());
+                std::string contrl_msg = std::to_string(frame_rate) + ";";
+                if (this->main_monitoring) contrl_msg += "M;";
+                else contrl_msg += "N;";
+                send_control_message(aes_encrypt_base(info_struct.aes_key, info_struct.aes_iv, (unsigned char *)contrl_msg.c_str()).c_str());
             }
             if (!online && offline_time == 0) {
                 offline_time = GetTickCount64();

@@ -77,7 +77,7 @@ public: Texture(ID3D11Device* pDevice = NULL)
       }
 
       void Release_Texture() {
-          if ((void*)texture != NULL) {
+          if (texture != NULL) {
               texture->Release();
               texture = NULL;
           }
