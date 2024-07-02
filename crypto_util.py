@@ -4,10 +4,13 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
 from base64 import b64decode, b64encode
 
+# 这个文件是所有加密相关的函数
+
 AES_KEY_SIZE = 32  # 256-bit key
 AES_BLOCK_SIZE = 16  # AES block size is always 16 bytes
 
-def rsa_crypto(public_key_pem, message):
+
+def rsa_crypto(public_key_pem, message):  #RSA加密函数
     public_key = RSA.import_key(public_key_pem)
     # 创建加密对象
     cipher = PKCS1_v1_5.new(public_key)
@@ -19,7 +22,7 @@ def rsa_crypto(public_key_pem, message):
     return encoded_encrypted_message
 
 
-def aes_decrypt(ciphertext):
+def aes_decrypt(ciphertext):  # AES解密函数
     # 初始化AES解密器
     cipher = AES.new(AES_KEY, AES.MODE_CBC, AES_IV)
     # 解密数据
@@ -29,7 +32,7 @@ def aes_decrypt(ciphertext):
     return plaintext[:-pad_len]
 
 
-def aes_encrypt(plaintext):
+def aes_encrypt(plaintext):  # AES加密函数
     # 初始化AES加密器
     cipher = AES.new(AES_KEY, AES.MODE_CBC, AES_IV)
     # 填充数据到16字节的倍数
@@ -42,7 +45,7 @@ def aes_encrypt(plaintext):
     return b64encode(ciphertext).decode('utf-8')
 
 
-def generate_aes_key():
+def generate_aes_key():  # AES密钥生成
     # 生成AES密钥和初始向量IV
     global AES_KEY
     global AES_IV

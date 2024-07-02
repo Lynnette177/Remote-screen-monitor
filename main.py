@@ -2,13 +2,15 @@ import socket
 import time
 import sys
 import tkinter as tk
+from tkinter import messagebox
 import threading
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from Mouse_control import *
 import screen_shots
-from intro import Ui_MainWindow  # 导入生成的ui文件
+from intro import Ui_MainWindow  # 导入由ui生成的文件
 from crypto_util import *
 from screen_shots import *
+import uuid
 
 udp_signal = 1
 
@@ -21,25 +23,42 @@ udp_port = None
 servers_ip = None
 width = 1920
 height = 1080
+username = ""
+password = ""
+mac_address = ""
 
-def on_button_click():
+
+def on_button_click():  # 当用户按下退出按钮
     global udp_signal
     udp_signal = 0
+    close_tcp()
     sys.exit(0)
 
 
-def tcp_shake_hand(ip, port):
+def show_popup(title, message):  # 显示弹窗的函数
+    root = tk.Tk()
+    root.withdraw()  # 隐藏主窗口
+    messagebox.showinfo(title, message)
+    root.destroy()  # 关闭主窗口
+
+def tcp_shake_hand(ip, port):  #tcp身份认证
     global public_key_pem_recvd
     global tcp_sock
     global udp_port
     global width
     global height
+    global mac_address
     # 创建TCP/IP套接字
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # 连接服务器
     server_address = (ip, port)
     print(f"连接到 {server_address}")
-    sock.connect(server_address)
+    try:
+        sock.connect(server_address)
+    except Exception as e:
+        show_popup("连接失败", e)
+        print(f"{e}")
+        return False
     try:
         # 用于累积接收到的数据
         buffer = b""
@@ -57,7 +76,7 @@ def tcp_shake_hand(ip, port):
                 else:
                     buffer = b""
         aes_key, aes_iv = generate_aes_key()
-        plain_text = f"test;crack;{aes_key.decode()};{aes_iv.decode()}"
+        plain_text = f"{username};{password};{mac_address};{aes_key.decode()};{aes_iv.decode()}"
         str_to_response = rsa_crypto(public_key_pem_recvd, plain_text)
         print(str_to_response)
         sock.sendall(str_to_response)
@@ -74,6 +93,10 @@ def tcp_shake_hand(ip, port):
                 decrypted_result = aes_decrypt(buffer)
                 print(decrypted_result)
                 break
+        print(decrypted_result)
+        if decrypted_result == b"UNAUTHORIZED":
+            show_popup("认证失败", "凭据错误")
+            sys.exit(0)
 
         parts = decrypted_result.decode().split(';')
         part1 = parts[0]
@@ -87,7 +110,8 @@ def tcp_shake_hand(ip, port):
             return True
         else:
             sock.sendall(aes_encrypt(b"Failed.").encode())
-            return False
+            show_popup("认证失败", "密钥不符")
+            sys.exit(0)
 
 
     except Exception as e:
@@ -96,7 +120,7 @@ def tcp_shake_hand(ip, port):
         return False
 
 
-def heart_beat():
+def heart_beat():  # 发送心跳，接收指令
     global global_frame_rate
     global tcp_sock
     global width
@@ -113,6 +137,7 @@ def heart_beat():
                 if buffer.endswith(b"\x01"):
                     buffer = buffer[:-1]
                     decrypted_result = aes_decrypt(buffer)
+                    print(decrypted_result)
                     parts = decrypted_result.decode().split(';')
                     part1 = parts[0]
                     part2 = parts[1]
@@ -134,7 +159,7 @@ def heart_beat():
 
 
 
-def close_tcp():
+def close_tcp():  #结束TCP连接
     try:
         tcp_sock.close()
         return True
@@ -142,7 +167,7 @@ def close_tcp():
         return False
 
 
-def udp_client(server_ip, server_port, chunk_size=700):
+def udp_client(server_ip, server_port, chunk_size=700):  #结束UDP连接
     # 创建UDP套接字
     global global_frame_rate
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -167,45 +192,57 @@ def udp_client(server_ip, server_port, chunk_size=700):
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self):
+    def __init__(self, mac):
         super(MainWindow, self).__init__()
         self.setupUi(self)
+        self.setWindowTitle("远程监控 客户端")
+        self.MacGoesHere.setText(mac)
+        self.lineEdit_5.setText("test")  # 设置服务器IP的初始值
+        self.lineEdit_4.setText("password")  # 设置服务器端口的初始值
         self.lineEdit.setText("127.0.0.1")  # 设置服务器IP的初始值
         self.lineEdit_3.setText("5005")  # 设置服务器端口的初始值
         self.lineEdit_2.setText("askfkhAOSIDIUHkljdhfskjgMNCMZPSDFI2KASDa1")  # 设置服务器密钥的初始值
         self.pushButton.clicked.connect(self.on_button_click)
 
     def on_button_click(self):
+        global username
+        global password
         global server_secret
         global servers_ip
         server_ip = self.lineEdit.text()
         server_port = self.lineEdit_3.text()
         server_key = self.lineEdit_2.text()
+        username = self.lineEdit_5.text()
+        password = self.lineEdit_4.text()
         print(f"IP: {server_ip}, Port: {server_port}, Key: {server_key}")
         servers_ip = server_ip
         server_secret = server_key
-        tcp_shake_hand(server_ip, int(server_port))
+        success_or_not = tcp_shake_hand(server_ip, int(server_port))
         if udp_port is not None:
             self.close()
 
+    def closeEvent(self, event):
+        sys.exit()
+
 
 if __name__ == "__main__":
-    #tcp_shake_hand('127.0.0.1', 5005)
-    #print(udp_port)
-    #close_tcp()
-    #udp_client('127.0.0.1',udp_port)
     app = QApplication(sys.argv)
-    window = MainWindow()
+    # 获取MAC地址
+    mac_address = hex(uuid.getnode()).replace('0x', '').upper()
+    # 格式化MAC地址
+    mac_address = ':'.join(mac_address[i:i + 2] for i in range(0, len(mac_address), 2))
+    print(f"本机的MAC地址是: {mac_address}")
+    window = MainWindow(mac_address)
     window.show()
     sys.exit_code = app.exec_()
     # close_tcp()
     root = tk.Tk()
 
-    # 设置窗口属性
+    # 设置窗口属性 这里是悬浮窗的创建
     root.overrideredirect(True)  # 隐藏标题栏
     root.attributes('-alpha', 0.7)  # 设置透明度，0为完全透明，1为不透明
     root.attributes('-topmost', True)  # 窗口始终置于最顶层
-    root.configure(bg='#333333')  # 设置窗口背景色为浅黑色，可以使用十六进制颜色码或颜色名称
+    root.configure(bg='#333333')  # 设置窗口背景色为浅黑色
 
     # 创建文本标签
     label = tk.Label(root, text="正在进行屏幕监控", font=("Helvetica", 12), fg='white', bg='#333333')
@@ -215,7 +252,7 @@ if __name__ == "__main__":
     button = tk.Button(root, text="点击退出", command=on_button_click)
     button.pack(pady=10)
 
-    # 让窗口显示在屏幕中心
+    # 让窗口显示在屏幕右下角
     window_width = 150
     window_height = 100
     screen_width = root.winfo_screenwidth()
@@ -223,11 +260,13 @@ if __name__ == "__main__":
     x_coordinate = int((screen_width - window_width))
     y_coordinate = int((screen_height - window_height)-100)
     root.geometry(f'{window_width}x{window_height}+{x_coordinate}+{y_coordinate}')
+    # 启动UDP和心跳控制线程 设置为守护线程 主程序退出则退出 不等待
     thread = threading.Thread(target=udp_client, args=(servers_ip, udp_port))
     heartbeat_thread = threading.Thread(target=heart_beat, args=())
     thread.daemon = True
     heartbeat_thread.daemon = True
     thread.start()
     heartbeat_thread.start()
+
     root.mainloop()
 
