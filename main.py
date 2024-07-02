@@ -4,7 +4,7 @@ import sys
 import tkinter as tk
 import threading
 from PyQt5.QtWidgets import QApplication, QMainWindow
-
+from Mouse_control import *
 import screen_shots
 from intro import Ui_MainWindow  # 导入生成的ui文件
 from crypto_util import *
@@ -19,7 +19,8 @@ server_secret = ""
 tcp_sock = None
 udp_port = None
 servers_ip = None
-
+width = 1920
+height = 1080
 
 def on_button_click():
     global udp_signal
@@ -31,6 +32,8 @@ def tcp_shake_hand(ip, port):
     global public_key_pem_recvd
     global tcp_sock
     global udp_port
+    global width
+    global height
     # 创建TCP/IP套接字
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # 连接服务器
@@ -96,6 +99,8 @@ def tcp_shake_hand(ip, port):
 def heart_beat():
     global global_frame_rate
     global tcp_sock
+    global width
+    global height
     try:
         while True:
             tcp_sock.sendall(aes_encrypt(b"HeartBeat").encode())
@@ -111,6 +116,9 @@ def heart_beat():
                     parts = decrypted_result.decode().split(';')
                     part1 = parts[0]
                     part2 = parts[1]
+                    part3 = parts[2]
+                    if not part3.startswith('O'):
+                        control_click(part3, width, height)
                     if not part1.isdigit():
                         break
                     frame_rate = int(part1)
@@ -119,7 +127,7 @@ def heart_beat():
                     if part2 == 'M':
                         screen_shots.main_monitoring = True
                     break
-            time.sleep(2)
+            time.sleep(0.2)
     except Exception as e:
         print(e)
         return False
