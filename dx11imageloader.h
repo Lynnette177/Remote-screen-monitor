@@ -44,7 +44,7 @@ public: Texture(ID3D11Device* pDevice = NULL)
                   uint8_t b = image_data[index + 2];
                   uint8_t a = image_data[index + 3];
 
-                  // 计算灰度值（使用简单平均值方法，或者其他加权方法）
+                  // 计算灰度值（使用简单平均值方法）
                   uint8_t gray = static_cast<uint8_t>(0.299 * r + 0.587 * g + 0.114 * b);
 
                   // 将 RGB 通道设置为灰度值

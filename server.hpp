@@ -4,34 +4,35 @@
 #include "dx11imageloader.h"
 #include "crypto.h"
 class ClientHandler {
+    //ClientHandler类 每个客户端分配一个 用来处理与客户端之间的事务
 private:
-    SOCKET clnt_control_sock;
-    SOCKET clnt_data_sock;
-    int udp_port = 0;
-    userInfo info_struct;
-    std::thread hb_thread;
-    std::vector<std::uint8_t> data_buffer;
+    SOCKET clnt_control_sock;//控制信息传输socket
+    SOCKET clnt_data_sock;//数据传输socket
+    int udp_port = 0;//为该客户分配的UDP端口号
+    userInfo info_struct;//该客户信息的结构体
+    std::thread hb_thread;//心跳和指令发送的线程
+    std::vector<std::uint8_t> data_buffer;//图片缓冲区容器
 public:
-    bool able_to_save = false;
-    std::mutex image_lock;
-    std::mutex command_lock;
-    std::string id;
-    int command = 0;
-    int x = 0;
-    int y = 0;
-    std::string client_info;
-    int frame_rate = 10;
-    bool main_monitoring = false;
-    std::vector<std::uint8_t> image_data;
-    bool generated_new_texture = false;
-    Texture thumb_texture;
-    float aspect_ratio = 2.f;
-    bool online = false;
-    uint64_t offline_time = 0;
-    bool offline_too_long_able_to_delete = false;
-    bool off_line_pic_generated = false;
-    bool stop_hb_thread = false;
-    bool save_image = false;
+    bool able_to_save = false;//是否能够保存截图
+    std::mutex image_lock;//图片容器读写互斥锁
+    std::mutex command_lock;//指令读写的互斥锁
+    std::string id;//客户身份 ID 保存文件时作为名字
+    int command = 0;//鼠标指令，012分别为无 左键 右键
+    int x = 0;//鼠标坐标
+    int y = 0;//鼠标坐标
+    std::string client_info;//要绘制出来的基本信息 text
+    int frame_rate = 10;//客户端监控帧率
+    bool main_monitoring = false;//是否启用高分辨率
+    std::vector<std::uint8_t> image_data;//生成纹理用的图片数据容器
+    bool generated_new_texture = false;//是否已经为图片生成过了纹理
+    Texture thumb_texture;//图片纹理
+    float aspect_ratio = 2.f;//客户端屏幕宽高比
+    bool online = false;//客户是否在线
+    uint64_t offline_time = 0;//客户离线时间
+    bool offline_too_long_able_to_delete = false;//客户离线时间过长，准备移除
+    bool off_line_pic_generated = false;//客户离线的灰色截图已经生成过
+    bool stop_hb_thread = false;//是否结束心跳线程
+    bool save_image = false;//是否保存屏幕截图
 
     ClientHandler(SOCKET _clnt_control_sock) : clnt_control_sock(_clnt_control_sock) {
         printClientInfo(true);
@@ -44,6 +45,7 @@ public:
         std::cout << "IV: " << info_struct.aes_iv << std::endl;
     }
     bool send_control_message(const char* message) {
+        //通过TCP SOCKET发送控制信息。TCP需要自己设置消息边界，这里以0x01作为消息的结束。并加入了异常处理
         try {
             int iResult = send(clnt_control_sock, message, strlen(message), 0);
 ;           send(clnt_control_sock, "\x01", 1, 0);
@@ -57,7 +59,7 @@ public:
             return false;
         }
     }
-    void printClientInfo(bool init = false) {//打印客户端连接信息
+    void printClientInfo(bool init = false) {//打印客户端连接信息 基本信息和ID保存到变量中
         struct sockaddr_in addr;
         socklen_t addr_len = sizeof(addr);
         if (getpeername(clnt_control_sock, (struct sockaddr*)&addr, &addr_len) == 0) {
@@ -82,15 +84,15 @@ public:
             bool authorized = false;
             char buffer[1024] = {};
             int bytes_received;
-            printClientInfo();
-            send_control_message(public_key);
+            printClientInfo();//打印基本连接信息
+            send_control_message(public_key);//发送公钥
             if ((bytes_received = recv(clnt_control_sock, buffer, sizeof(buffer), 0)) > 0) {
                 std::string plain_text = rsa_decrypt_base(buffer);
                 parse_userInfo(&info_struct, plain_text);
                 show_private_info();
 
                 //这里可以验证客户是否合法
-                if (0){//如果非法的例子
+                if (0){//如果非法的例子 不会进入的
                     std::string info_to_send = "UNAUTHORIZED";
                     std::string cipher_mesg = aes_encrypt_base(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)info_to_send.c_str());
                     send_control_message(cipher_mesg.c_str());
@@ -106,7 +108,7 @@ public:
             }
             if ((bytes_received = recv(clnt_control_sock, buffer, sizeof(buffer), 0)) > 0) {
                 std::cout << "\n" << buffer << "\n";
-                //两种解密方式 example:
+                //两种解密方式的例子 返回值不同 分别是string和指针读写:
                 std::string plain_text = aes_decrypt_base_to_string(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)buffer);
                 
                 unsigned char* ptext = NULL;
@@ -134,10 +136,12 @@ public:
                 return;
             }
             else {
+                //客户端认证成功了，把指针保存到数组中方便绘制用。同时启动UDP处理，TCP控制线程，从客户端开始接收数据、收发指令。
                 all_connected_clients.push_back(this);
                 hb_thread = std::thread(&ClientHandler::heart_beat_detect, this);
                 printClientInfo();
                 udp_handler();
+                //如果udp_handler退出了代表客户端已经终止了连接。
                 closesocket(clnt_control_sock);
                 closesocket(clnt_data_sock);
                 auto it = std::remove(all_connected_clients.begin(), all_connected_clients.end(), this);
@@ -260,7 +264,7 @@ public:
             else {
                 buffer[recv_len] = '\0'; // 确保字符串以NULL结尾
                 std::string plain_text = aes_decrypt_base_to_string(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)buffer);
-                std::cout << "Received Decryptied: " << plain_text << std::endl;
+                //std::cout << "Received Decryptied: " << plain_text << std::endl;
                 online = true;
                 std::string contrl_msg = std::to_string(frame_rate) + ";";
                 if (this->main_monitoring) contrl_msg += "M;";
@@ -308,7 +312,7 @@ private:
     SOCKET serv_sock;
     std::vector<std::thread> client_threads;
     std::atomic<bool> stop_server;
-
+    //客户端私有信息。其中client_threads存储了所有客户端的线程
 public:
     Server(const wchar_t* _ip, int _port) : ip(_ip), port(_port), serv_sock(INVALID_SOCKET), stop_server(false) {}
 
@@ -367,7 +371,7 @@ public:
         }
         std::cout << "Server Started" << std::endl;
 
-        while (!stop_server) {
+        while (!stop_server) {//循环等待客户端连接 连接后放到容器中 启动线程
             struct sockaddr_in clnt_addr;
             socklen_t clnt_addr_size = sizeof(clnt_addr);
             SOCKET clnt_control_sock = accept(serv_sock, (struct sockaddr*)&clnt_addr, &clnt_addr_size);

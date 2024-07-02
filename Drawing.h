@@ -6,12 +6,12 @@
 #include "dx11imageloader.h"
 #include "UI.h"
 class Drawing
-{
+{//绘制类。包含窗口名，size等基本信息
 private:
 	static LPCSTR lpWindowName;
 	static ImVec2 vWindowSize;
 	static ImGuiWindowFlags WindowFlags;
-	static bool bDraw;
+	static bool bDraw;//是否正在绘制的标志，没用
 
 public:
 	static void Active();
@@ -43,15 +43,15 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 	static bool switched = true;
 	if (isActive())
 	{
-		if (GetAsyncKeyState(VK_ESCAPE)) {
+		if (GetAsyncKeyState(VK_ESCAPE)) {//如果检测到esc键按下，那么要切换到非全屏模式
 			FullWindow = false;
-			reset_Frame_rate = true;
+			reset_Frame_rate = true;//重置所有帧率的标志
 			switched = true;
 		}
 
 		static int client_number;
-		if (!FullWindow) {
-			if (switched) {
+		if (!FullWindow) {//是否以全屏的方式显示
+			if (switched) {//是否是全屏切换后的第一次，如果是要重设窗口大小
 				ImGui::SetNextWindowSize(vWindowSize);
 				ImGui::SetNextWindowBgAlpha(1.0f);
 				switched = false;
@@ -62,12 +62,13 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 				ImGui::SliderInt(u8"自动保存图片时间间隔(秒)", &save_interval, 10, 120);
 				client_number = 0;
 				bool did_save = false;
-				for (const auto& v : all_connected_clients) {
+				for (const auto& v : all_connected_clients) {//遍历所有客户端，分别绘制
 					ClientHandler* now_draw_client = (ClientHandler*)v;
 					std::lock_guard<std::mutex> lock(now_draw_client->image_lock); // 自动管理锁
 					if (reset_Frame_rate) {
 						now_draw_client->frame_rate = 10;
 					}
+					//如果已经从二进制数据加载出来过纹理则不需要重新进行加载。否则要从vector中的uint8_t数据加载纹理
 					if (!now_draw_client->generated_new_texture || !now_draw_client->off_line_pic_generated) {
 						if (now_draw_client->off_line_pic_generated && !now_draw_client->generated_new_texture) {
 							ID3D11ShaderResourceView* pSRV = (ID3D11ShaderResourceView*)now_draw_client->thumb_texture.GetTexture();
@@ -82,12 +83,14 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 							now_draw_client->thumb_texture.Release_Texture();
 							if (now_draw_client->thumb_texture.pDevice != pd3ddevice)
 								now_draw_client->thumb_texture.pDevice = pd3ddevice;
+							//如果是离线，那么要把图片加载成灰色的。不同的加载函数进行了手动处理
 							now_draw_client->thumb_texture.LoadTextureFromMemory_To_Gray(now_draw_client->image_data.data(), now_draw_client->image_data.size());
 							now_draw_client->off_line_pic_generated = true;
 						}
 						if (((ClientHandler*)v)->able_to_save) {
+							//如果可以保存的标志是真，就进行保存，并置为假
 							saveVectorToBinaryFile(now_draw_client->image_data, now_draw_client->id , getCurrentTime() + ".jpeg");
-							((ClientHandler*)v)->able_to_save = false;
+							((ClientHandler*)v)->able_to_save = false; //置为假 通知客户端已经保存过了，下一次不用再传送高分辨率图片了
 						}
 					}
 					client_number++;
@@ -108,13 +111,14 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 						MainMonitoring = (ClientHandler*)v;
 					}
 					ImGui::SameLine();
+					//检测是否用户点击了CheckBox
 					bool tmp_tick = ((ClientHandler*)v)->save_image;
 					ImGui::Checkbox(tickbox.str().c_str(), &((ClientHandler*)v)->save_image);
-					if (!tmp_tick == ((ClientHandler*)v)->save_image) save_time = 0;
-					((ClientHandler*)v)->main_monitoring = ((ClientHandler*)v)->save_image;
+					if (!tmp_tick == ((ClientHandler*)v)->save_image) save_time = 0;//如果点击了累计时间清零 保存所有图片重新开始计时
+					((ClientHandler*)v)->main_monitoring = ((ClientHandler*)v)->save_image;//如果确定要保存把这个置为真通知客户端要获取高分辨率的图片，因为下一次加载图片的时候要保存了
 					if (((ClientHandler*)v)->save_image && GetTickCount64() - save_time > save_interval * 1000) {
-						((ClientHandler*)v)->able_to_save = true;
-						did_save = true;
+						((ClientHandler*)v)->able_to_save = true;//只有当选择保存这个，并且计时已经超过用户设置值，则标识位记为真
+						did_save = true;//用于在循环外重置计时
 					}
 					
 				}
@@ -125,12 +129,12 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 			}
 		}
 		else {
-			if (switched) {
+			if (switched) {//同上 切换标志
 				ImGui::SetNextWindowSize(ImVec2(client_width, client_height));
 				ImGui::SetNextWindowPos(ImVec2(0, 0));
+				ImGui::SetNextWindowBgAlpha(1.0f);
 				switched = false;
 			}
-			ImGui::SetNextWindowBgAlpha(1.0f);
 			ImGui::Begin(lpWindowName, &bDraw, WindowFlags);
 			{
 				bool still_online = false;
@@ -176,13 +180,13 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 							MainMonitoring->x = relative_x;
 							MainMonitoring->y = relative_y;
 							MainMonitoring->command_lock.unlock();
-							// 输出相对坐标（或者在你的代码中使用它们）
-							printf("Clicked at : (%d, %d)\n",  relative_x, relative_y);
+							// 计算相对坐标 放入类实例中 传送给客户端，准备点击
+							//printf("Clicked at : (%d, %d)\n",  relative_x, relative_y);
 						}
 					}
-					else ((ClientHandler*)v)->frame_rate = 1;
+					else ((ClientHandler*)v)->frame_rate = 1;//其他不是主要观察者的机器，全部设为帧为1，减少资源占用
 				}
-				if (!still_online) {
+				if (!still_online) {//如果离线时间超时，则自动切换回非全屏模式
 					MainMonitoring = NULL;
 					FullWindow = false;
 					switched = true;
@@ -192,11 +196,6 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 		}
 		ImGui::End();
 	}
-
-#ifdef _WINDLL
-	if (GetAsyncKeyState(VK_INSERT) & 1)
-		bDraw = !bDraw;
-#endif
 }
 
 #endif

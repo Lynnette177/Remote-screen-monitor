@@ -2,7 +2,7 @@
 #pragma warning(push)     //禁用4996警告防止openssl因版本问题报错，并在文件尾部取消掉这个禁用
 #pragma warning(disable: 4996)
 #include "includes.h"
-
+//这个文件是所有用到openssl的函数。最下面的几个函数是自己封装了一次用来实现特定格式输入和输出的加解密。
 std::string base64Encode(unsigned char * input,int length) {
     BIO* bio, * b64;
     BUF_MEM* bufferPtr;
@@ -11,7 +11,7 @@ std::string base64Encode(unsigned char * input,int length) {
     bio = BIO_new(BIO_s_mem());
     bio = BIO_push(b64, bio);
 
-    // Ignore newlines
+    // 忽略新行
     BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
     BIO_write(bio, input, length);
     BIO_flush(bio);
@@ -33,7 +33,7 @@ std::string base64Decode(const std::string& encoded) {
     bio = BIO_new_mem_buf(encoded.data(), encoded.length());
     bio = BIO_push(b64, bio);
 
-    // Ignore newlines
+    // 忽略新行
     BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
     decodeLen = BIO_read(bio, buffer, encoded.length());
     BIO_free_all(bio);
@@ -148,31 +148,7 @@ int aes_decrypt(unsigned char* ciphertext, int ciphertext_len,
     EVP_CIPHER_CTX_free(ctx);
     return plaintext_len;
 }
-int aes_test_example() {
-    unsigned char key[AES_BLOCK_SIZE]; // 256-bit key
-    unsigned char iv[AES_BLOCK_SIZE];  // initialization vector
-    // Generate AES key and IV
-    RAND_bytes(key, sizeof(key));
-    RAND_bytes(iv, sizeof(iv));
-    const char* plaintext = "U:HEreisAtest;P:testIsGood;1234567890123456";
-    int plaintext_len = strlen(plaintext);
-    // Determine ciphertext length
-    int ciphertext_len = ((plaintext_len + AES_BLOCK_SIZE - 1) / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;
-    unsigned char* ciphertext = new unsigned char[ciphertext_len];
-    unsigned char* decryptedtext = new unsigned char[ciphertext_len];
-    memset(ciphertext, 0, ciphertext_len);
-    memset(decryptedtext, 0, ciphertext_len);
-    // Encrypt plaintext
-    aes_encrypt((unsigned char*)plaintext, plaintext_len, key, iv, ciphertext);
-    // Decrypt ciphertext
-    aes_decrypt(ciphertext, ciphertext_len, key, iv, decryptedtext);
-    decryptedtext[plaintext_len] = '\0';
-    std::cout << "Original: " << plaintext << std::endl;
-    std::cout << "Decrypted: " << decryptedtext << std::endl;
-    delete[] ciphertext;
-    delete[] decryptedtext;
-    return 0;
-}
+
 
 //以上是标准加解密函数。下面是会用到的函数，经过正确的格式转换之后调用上方标准函数。
 

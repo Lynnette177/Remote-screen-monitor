@@ -33,7 +33,7 @@ ID3D11RenderTargetView* UI_imgui::pMainRenderTargetView = nullptr;
 
 HMODULE UI_imgui::hCurrentModule = nullptr;
 
-bool UI_imgui::CreateDeviceD3D(HWND hWnd)
+bool UI_imgui::CreateDeviceD3D(HWND hWnd)//创建D3D设备
 {
     DXGI_SWAP_CHAIN_DESC sd;
     ZeroMemory(&sd, sizeof(sd));
@@ -62,7 +62,7 @@ bool UI_imgui::CreateDeviceD3D(HWND hWnd)
     return true;
 }
 
-void UI_imgui::CreateRenderTarget()
+void UI_imgui::CreateRenderTarget()//创建渲染目标
 {
     ID3D11Texture2D* pBackBuffer;
     pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
@@ -73,7 +73,7 @@ void UI_imgui::CreateRenderTarget()
     }
 }
 
-void UI_imgui::CleanupRenderTarget()
+void UI_imgui::CleanupRenderTarget()//清理
 {
     if (pMainRenderTargetView)
     {
@@ -82,7 +82,7 @@ void UI_imgui::CleanupRenderTarget()
     }
 }
 
-void UI_imgui::CleanupDeviceD3D()
+void UI_imgui::CleanupDeviceD3D()//清理D3D设备
 {
     CleanupRenderTarget();
     if (pSwapChain)
@@ -149,10 +149,9 @@ LRESULT WINAPI UI_imgui::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
 
 void UI_imgui::Render()
 {
+    // 获得窗口客户区的大小 后续全屏时使用
     HWND hd = GetDesktopWindow();
-    // 方法一
     RECT rect;
-    // 只获得窗口客户区的大小
     GetClientRect(hd, &rect);
     client_width = (rect.right - rect.left);
     client_height = (rect.bottom - rect.top);
@@ -182,7 +181,7 @@ void UI_imgui::Render()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-    ImGui::StyleColorsLight();
+    ImGui::StyleColorsLight();//ImGUI主题
 
     ImGuiStyle& style = ImGui::GetStyle();
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -216,6 +215,7 @@ void UI_imgui::Render()
 
     while (!bDone)
     {
+        //窗口消息处理，包括判断推出的条件
         MSG msg;
         while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
         {
@@ -235,11 +235,11 @@ void UI_imgui::Render()
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
         {
-            Drawing::Draw(pd3dDevice);
+            Drawing::Draw(pd3dDevice);//自定义菜单绘制
         }
         ImGui::EndFrame();
 
-        ImGui::Render();
+        ImGui::Render();//渲染
         const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
         pd3dDeviceContext->OMSetRenderTargets(1, &pMainRenderTargetView, nullptr);
         pd3dDeviceContext->ClearRenderTargetView(pMainRenderTargetView, clear_color_with_alpha);
@@ -251,7 +251,7 @@ void UI_imgui::Render()
             ImGui::RenderPlatformWindowsDefault();
         }
 
-        pSwapChain->Present(1, 0);
+        pSwapChain->Present(1, 0);//垂直同步
 
 #ifndef _WINDLL
         if (!Drawing::isActive())
@@ -266,9 +266,5 @@ void UI_imgui::Render()
     CleanupDeviceD3D();
     ::DestroyWindow(hwnd);
     ::UnregisterClass(wc.lpszClassName, wc.hInstance);
-
-#ifdef _WINDLL
-    CreateThread(nullptr, NULL, (LPTHREAD_START_ROUTINE)FreeLibrary, hCurrentModule, NULL, nullptr);
-#endif
 }
 #endif

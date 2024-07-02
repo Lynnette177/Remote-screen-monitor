@@ -1,14 +1,17 @@
 #pragma once
 #include "includes.h"
 #include "fonts.h"
-std::string server_info = "askfkhAOSIDIUHkljdhfskjgMNCMZPSDFI2KASDa1";
 
-char private_key[KEY_BUFFER_SIZE] = { 0 };
-char public_key[KEY_BUFFER_SIZE] = { 0 };
+//这个文件是用来存储全局变量的
+namespace fs = std::filesystem;
+std::string server_info = "askfkhAOSIDIUHkljdhfskjgMNCMZPSDFI2KASDa1";//服务器信息，用于客户端确认服务器的身份
+
+char private_key[KEY_BUFFER_SIZE] = { 0 };//RSA公钥
+char public_key[KEY_BUFFER_SIZE] = { 0 };//RSA私钥
 std::vector<void*> all_connected_clients;//存储所有的已连接客户端处理器的指针
-int client_width = 1920;
+int client_width = 1920;//服务器屏幕的宽和高
 int client_height = 1080;
-void parse_userInfo(userInfo* output, std::string receive_str) {
+void parse_userInfo(userInfo* output, std::string receive_str) {//处理客户端发来的客户信息字符串，分割出来并存入结构体
     // 用于存储分割后的子字符串
     std::string username, password,mac, key, iv;
     // 创建一个字符串输入流
@@ -27,7 +30,7 @@ void parse_userInfo(userInfo* output, std::string receive_str) {
 }
 
 
-std::string getCurrentTime() {
+std::string getCurrentTime() {//获取当前时间，保存截图时文件名用
     // 获取当前时间点
     std::time_t now = std::time(nullptr);
     // 定义 tm 结构并使用 localtime_s 安全地转换时间点
@@ -41,7 +44,7 @@ std::string getCurrentTime() {
 }
 
 
-void createDirectoryIfNotExists(const std::string& directoryPath) {
+void createDirectoryIfNotExists(const std::string& directoryPath) {//检查目录是否存在，不存在则创建。保存截图时用
     if (!fs::exists(directoryPath)) {
         if (fs::create_directories(directoryPath)) {
             std::cout << "Directory created: " << directoryPath << std::endl;
@@ -54,6 +57,8 @@ void createDirectoryIfNotExists(const std::string& directoryPath) {
         std::cout << "Directory already exists: " << directoryPath << std::endl;
     }
 }
+
+//把vector<uint8_t>中的数据存入文件中。其中替换掉了:因为是文件名不能存在的非法字符
 void saveVectorToBinaryFile(const std::vector<uint8_t>& data, const std::string& path, const std::string& filename) {
     std::string rpath = path;
     std::string rname = filename;

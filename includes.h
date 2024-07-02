@@ -1,5 +1,5 @@
 #pragma once
-
+//这个文件存放所有需要包含的库/头文件/宏定义
 #include <thread>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -36,7 +36,7 @@
 #include <ctime>
 #include <iomanip>
 
+//RSA缓冲区相关的大小定义
 #define KEY_BUFFER_SIZE 2048
 #define RSA_KEY_LENGTH 2048
 #define RSA_PLAINTEXT_SIZE 128
-namespace fs = std::filesystem;

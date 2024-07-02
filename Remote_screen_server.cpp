@@ -20,7 +20,9 @@ int main()
     std::thread serverThread(&Server::start_server, &server);
     // 线程在后台运行
     serverThread.detach(); 
+    //启动绘制
     UI_imgui::Render();
+    //绘制结束了代表用户关闭了菜单，停止服务器并退出即可
     server.stop();
     return 0;
 
