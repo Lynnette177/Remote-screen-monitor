@@ -58,12 +58,23 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 			}
 			ImGui::Begin(lpWindowName, &bDraw, WindowFlags);
 			{
+				int max_x = int(ImGui::GetWindowSize().x) / 300;
 				ImGui::Text(u8"已有%d个客户端建立连接。", client_number);
 				ImGui::SliderInt(u8"自动保存图片时间间隔(秒)", &save_interval, 10, 120);
 				client_number = 0;
 				bool did_save = false;
+				int row = 0;
+				int column = 0;
 				for (const auto& v : all_connected_clients) {//遍历所有客户端，分别绘制
+					ImGui::SetCursorPos(ImVec2(column * 300 + 10, 100 + row * 240));
+					column++;
+					if (column >= max_x) {
+						column = 0;
+						row++;
+					}
 					ClientHandler* now_draw_client = (ClientHandler*)v;
+					ImGui::BeginChild(std::to_string(client_number).c_str(), ImVec2(300, 240), true);
+
 					std::lock_guard<std::mutex> lock(now_draw_client->image_lock); // 自动管理锁
 					if (reset_Frame_rate) {
 						now_draw_client->frame_rate = 10;
@@ -120,7 +131,8 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 						((ClientHandler*)v)->able_to_save = true;//只有当选择保存这个，并且计时已经超过用户设置值，则标识位记为真
 						did_save = true;//用于在循环外重置计时
 					}
-					
+
+					ImGui::EndChild();
 				}
 				reset_Frame_rate = false;
 				if (did_save)
