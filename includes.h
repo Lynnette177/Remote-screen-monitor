@@ -31,7 +31,12 @@
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
 #include <mutex>
+#include <fstream>
+#include <filesystem>
+#include <ctime>
+#include <iomanip>
 
 #define KEY_BUFFER_SIZE 2048
 #define RSA_KEY_LENGTH 2048
 #define RSA_PLAINTEXT_SIZE 128
+namespace fs = std::filesystem;

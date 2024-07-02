@@ -38,6 +38,8 @@ bool Drawing::isActive()
 
 void Drawing::Draw(ID3D11Device* pd3ddevice)
 {
+	static uint64_t save_time = 0;
+	static int save_interval = 100;
 	static bool switched = true;
 	if (isActive())
 	{
@@ -46,6 +48,7 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 			reset_Frame_rate = true;
 			switched = true;
 		}
+
 		static int client_number;
 		if (!FullWindow) {
 			if (switched) {
@@ -56,10 +59,12 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 			ImGui::Begin(lpWindowName, &bDraw, WindowFlags);
 			{
 				ImGui::Text(u8"已有%d个客户端建立连接。", client_number);
+				ImGui::SliderInt(u8"自动保存图片时间间隔(秒)", &save_interval, 10, 120);
 				client_number = 0;
+				bool did_save = false;
 				for (const auto& v : all_connected_clients) {
 					ClientHandler* now_draw_client = (ClientHandler*)v;
-					now_draw_client->image_lock.lock();
+					std::lock_guard<std::mutex> lock(now_draw_client->image_lock); // 自动管理锁
 					if (reset_Frame_rate) {
 						now_draw_client->frame_rate = 10;
 					}
@@ -80,25 +85,42 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 							now_draw_client->thumb_texture.LoadTextureFromMemory_To_Gray(now_draw_client->image_data.data(), now_draw_client->image_data.size());
 							now_draw_client->off_line_pic_generated = true;
 						}
+						if (((ClientHandler*)v)->able_to_save) {
+							saveVectorToBinaryFile(now_draw_client->image_data, now_draw_client->id , getCurrentTime() + ".jpeg");
+							((ClientHandler*)v)->able_to_save = false;
+						}
 					}
 					client_number++;
+					ImGui::Text((now_draw_client->id).c_str());
 					if (now_draw_client->online)
 						ImGui::Text((now_draw_client->client_info + u8" 在线").c_str());
 					else
 						ImGui::Text((now_draw_client->client_info + u8" 离线").c_str());
 					ImGui::Image(now_draw_client->thumb_texture.GetTexture(), ImVec2(now_draw_client->aspect_ratio * 100, 100)); // 绘制图片
-					std::ostringstream oss,buttonlable;
+					std::ostringstream oss, buttonlable, tickbox;
 					oss << u8"监控帧率 " << client_number;
 					buttonlable << u8"全屏客户" << client_number;
+					tickbox << u8"自动保存截图" << client_number;
 					ImGui::SliderInt(oss.str().c_str(), &((ClientHandler*)v)->frame_rate, 1, 100);
 					if (ImGui::Button(buttonlable.str().c_str())) {
 						FullWindow = true;
 						switched = true;
 						MainMonitoring = (ClientHandler*)v;
 					}
-					now_draw_client->image_lock.unlock();
+					ImGui::SameLine();
+					bool tmp_tick = ((ClientHandler*)v)->save_image;
+					ImGui::Checkbox(tickbox.str().c_str(), &((ClientHandler*)v)->save_image);
+					if (!tmp_tick == ((ClientHandler*)v)->save_image) save_time = 0;
+					((ClientHandler*)v)->main_monitoring = ((ClientHandler*)v)->save_image;
+					if (((ClientHandler*)v)->save_image && GetTickCount64() - save_time > save_interval * 1000) {
+						((ClientHandler*)v)->able_to_save = true;
+						did_save = true;
+					}
+					
 				}
 				reset_Frame_rate = false;
+				if (did_save)
+				    save_time = GetTickCount64();
 				ImGui::Text(u8"平均帧率 %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			}
 		}
@@ -113,7 +135,7 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 			{
 				bool still_online = false;
 				for (void* v : all_connected_clients) {
-					((ClientHandler*)v)->image_lock.lock();
+					std::lock_guard<std::mutex> lock(((ClientHandler*)v)->image_lock); // 自动管理锁
 					if (v == (void* )MainMonitoring) {
 						still_online = true;
 						MainMonitoring->frame_rate = 30;
@@ -159,7 +181,6 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 						}
 					}
 					else ((ClientHandler*)v)->frame_rate = 1;
-					((ClientHandler*)v)->image_lock.unlock();
 				}
 				if (!still_online) {
 					MainMonitoring = NULL;

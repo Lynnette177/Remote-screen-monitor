@@ -12,8 +12,10 @@ private:
     std::thread hb_thread;
     std::vector<std::uint8_t> data_buffer;
 public:
+    bool able_to_save = false;
     std::mutex image_lock;
     std::mutex command_lock;
+    std::string id;
     int command = 0;
     int x = 0;
     int y = 0;
@@ -29,14 +31,15 @@ public:
     bool offline_too_long_able_to_delete = false;
     bool off_line_pic_generated = false;
     bool stop_hb_thread = false;
-    
+    bool save_image = false;
 
     ClientHandler(SOCKET _clnt_control_sock) : clnt_control_sock(_clnt_control_sock) {
         printClientInfo(true);
     }
     void show_private_info() {//展示用户私有信息调试用
-        std::cout << "Username: " << info_struct.name << std::endl;
+        std::cout << "\nUsername: " << info_struct.name << std::endl;
         std::cout << "Password: " << info_struct.password << std::endl;
+        std::cout << "MAC Address: " << info_struct.mac << std::endl;
         std::cout << "Key: " << info_struct.aes_key << std::endl;
         std::cout << "IV: " << info_struct.aes_iv << std::endl;
     }
@@ -67,6 +70,7 @@ public:
             client_info = ip;
             client_info += ":";
             client_info += std::to_string(ntohs(addr.sin_port));
+            id = info_struct.name + "---" + info_struct.mac;
         }
         else {
             std::cerr << "Error getting client info" << std::endl;
@@ -82,8 +86,17 @@ public:
             send_control_message(public_key);
             if ((bytes_received = recv(clnt_control_sock, buffer, sizeof(buffer), 0)) > 0) {
                 std::string plain_text = rsa_decrypt_base(buffer);
-                parse_userInfo(&info_struct,plain_text);
+                parse_userInfo(&info_struct, plain_text);
                 show_private_info();
+
+                //这里可以验证客户是否合法
+                if (0){//如果非法的例子
+                    std::string info_to_send = "UNAUTHORIZED";
+                    std::string cipher_mesg = aes_encrypt_base(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)info_to_send.c_str());
+                    send_control_message(cipher_mesg.c_str());
+                    return;
+                }
+
                 init_udp_server();
                 std::string info_to_send = server_info + ";" + std::to_string(udp_port);
                 std::string cipher_mesg = aes_encrypt_base(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)info_to_send.c_str());
@@ -98,6 +111,7 @@ public:
                 
                 unsigned char* ptext = NULL;
                 aes_decrypt_base_to_bytes(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)buffer, &ptext);
+
                 delete[]  ptext;
                 int split_index = plain_text.find(';');
                 if (split_index == -1) {
@@ -122,6 +136,7 @@ public:
             else {
                 all_connected_clients.push_back(this);
                 hb_thread = std::thread(&ClientHandler::heart_beat_detect, this);
+                printClientInfo();
                 udp_handler();
                 closesocket(clnt_control_sock);
                 closesocket(clnt_data_sock);
@@ -197,13 +212,14 @@ public:
             if (strcmp(buffer, "-!END") == 0) {
                // std::cout << "Received END, processing data..." << std::endl;
                 //std::cout << "Data size: " << data_buffer.size() << " bytes" << std::endl;
-                image_lock.lock();
-                image_data.clear();
-                image_data = data_buffer;
-                data_buffer.clear();
-                new_pic = true;
-                generated_new_texture = false;
-                image_lock.unlock();
+                {
+                    std::lock_guard<std::mutex> lock(image_lock); // 自动管理锁
+                    image_data.clear();
+                    image_data = data_buffer;
+                    data_buffer.clear();
+                    new_pic = true;
+                    generated_new_texture = false;
+                } // 这里锁会在作用域结束时自动释放
             }
             else {
                 // 累积数据
