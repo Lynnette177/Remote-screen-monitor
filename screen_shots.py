@@ -20,7 +20,7 @@ def get_screen_pic_byte_array():
         quality = 20
         division = 6
     # 降低分辨率
-    screenshot = screenshot.resize((screenshot.width // division, screenshot.height // division), Image.ANTIALIAS)
+    screenshot = screenshot.resize((screenshot.width // division, screenshot.height // division))
     # 将截图保存到字节流中，以JPEG格式，降低质量
     byte_io = io.BytesIO()
     screenshot.save(byte_io, format='JPEG', quality=quality)  # 质量参数可以根据需要调整
