@@ -1,5 +1,6 @@
 #pragma once
 #include "includes.h"
+#include "fonts.h"
 std::string server_info = "askfkhAOSIDIUHkljdhfskjgMNCMZPSDFI2KASDa1";
 
 char private_key[KEY_BUFFER_SIZE] = { 0 };

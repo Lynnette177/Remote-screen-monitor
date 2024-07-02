@@ -19,8 +19,8 @@ public:
 	static void Draw(ID3D11Device* pd3ddevice);
 };
 
-LPCSTR Drawing::lpWindowName = "ImGui Standalone";
-ImVec2 Drawing::vWindowSize = { 350, 75 };
+LPCSTR Drawing::lpWindowName = u8"远程屏幕监控系统";
+ImVec2 Drawing::vWindowSize = { 900, 600 };
 ImGuiWindowFlags Drawing::WindowFlags = 0;
 bool Drawing::bDraw = true;
 
@@ -38,11 +38,13 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 {
 	if (isActive())
 	{
+		static int client_number;
 		ImGui::SetNextWindowSize(vWindowSize, ImGuiCond_Once);
 		ImGui::SetNextWindowBgAlpha(1.0f);
 		ImGui::Begin(lpWindowName, &bDraw, WindowFlags);
 		{
-			ImGui::Text("Create your own menu.");
+			ImGui::Text(u8"已有%d个客户端建立连接。", client_number);
+			client_number = 0;
 			for (void* v : all_connected_clients) {
 				ClientHandler* now_draw_client = (ClientHandler*)v;
 				ImGui::Text(now_draw_client->client_info.c_str());
@@ -56,7 +58,8 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 					now_draw_client->thumb_texture.LoadTextureFromMemory(now_draw_client->data_buffer.data(),now_draw_client->data_buffer.size());
 					now_draw_client->generated_new_texture = true;
 				}
-				ImGui::Image(now_draw_client->thumb_texture.GetTexture(), ImVec2(240, 100)); // 绘制图片
+				client_number++;
+				ImGui::Image(now_draw_client->thumb_texture.GetTexture(), ImVec2(now_draw_client->aspect_ratio * 100, 100)); // 绘制图片
 			}
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		}

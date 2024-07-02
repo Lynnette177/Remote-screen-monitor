@@ -9,11 +9,14 @@ private:
     SOCKET clnt_data_sock;
     int udp_port = 0;
     userInfo info_struct;
+    
 public:
     std::string client_info;
     std::vector<std::uint8_t> data_buffer;
     bool generated_new_texture = false;
     Texture thumb_texture;
+    float aspect_ratio = 2.f;
+
     ClientHandler(SOCKET _clnt_control_sock) : clnt_control_sock(_clnt_control_sock) {
         printClientInfo(true);
     }
@@ -82,13 +85,19 @@ public:
                 unsigned char* ptext = NULL;
                 aes_decrypt_base_to_bytes(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)buffer, &ptext);
                 delete[]  ptext;
-                if (plain_text != "Correct") {
+                int split_index = plain_text.find(';');
+                if (split_index == -1) {
                     printf("客户端认证失败\n");
                     return;
                 }
                 else {
-                    printf("客户端认证成功\n");
-                    authorized = true;
+                    std::string code = std::string(plain_text.substr(0, split_index));
+                    std::string ratio = std::string(plain_text.substr(split_index+1, plain_text.length() - split_index+1));
+                    if (code == "Correct" && std::stof(ratio) > 0.01f) {
+                        printf("客户端认证成功\n");
+                        this->aspect_ratio = std::stof(ratio);
+                        authorized = true;
+                    }
                 }
                 memset(buffer, 0, 1024);//处理结束清空缓冲区
             }
@@ -155,7 +164,7 @@ public:
                 continue;
             }
 
-            if (strcmp(buffer, "END") == 0) {
+            if (strcmp(buffer, "-!END") == 0) {
                // std::cout << "Received END, processing data..." << std::endl;
                 //std::cout << "Data size: " << data_buffer.size() << " bytes" << std::endl;
                 new_pic = true;
