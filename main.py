@@ -137,7 +137,7 @@ def heart_beat():  # 发送心跳，接收指令
                 if buffer.endswith(b"\x01"):
                     buffer = buffer[:-1]
                     decrypted_result = aes_decrypt(buffer)
-                    print(decrypted_result)
+                    # print(decrypted_result)
                     parts = decrypted_result.decode().split(';')
                     part1 = parts[0]
                     part2 = parts[1]
@@ -222,7 +222,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.close()
 
     def closeEvent(self, event):
-        sys.exit()
+        if udp_port is None:
+            sys.exit(0)
 
 
 if __name__ == "__main__":
