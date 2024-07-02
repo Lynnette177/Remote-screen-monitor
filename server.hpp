@@ -13,6 +13,10 @@ private:
     std::vector<std::uint8_t> data_buffer;
 public:
     std::mutex image_lock;
+    std::mutex command_lock;
+    int command = 0;
+    int x = 0;
+    int y = 0;
     std::string client_info;
     int frame_rate = 10;
     bool main_monitoring = false;
@@ -245,6 +249,24 @@ public:
                 std::string contrl_msg = std::to_string(frame_rate) + ";";
                 if (this->main_monitoring) contrl_msg += "M;";
                 else contrl_msg += "N;";
+                command_lock.lock();
+                if (command == 0) {
+                    contrl_msg += "O";
+                }
+                else if (command == 1) {
+                    std::string x_co = std::to_string(x);
+                    std::string y_co = std::to_string(y);
+                    contrl_msg += "L" + x_co + "&" + y_co;
+                }
+                else if (command == 2) {
+                    std::string x_co = std::to_string(x);
+                    std::string y_co = std::to_string(y);
+                    contrl_msg += "R" + x_co + "&" + y_co;
+                }
+                command = 0;
+                x = 0;
+                y = 0;
+                command_lock.unlock();
                 send_control_message(aes_encrypt_base(info_struct.aes_key, info_struct.aes_iv, (unsigned char *)contrl_msg.c_str()).c_str());
             }
             if (!online && offline_time == 0) {

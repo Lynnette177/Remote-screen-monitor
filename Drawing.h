@@ -126,17 +126,24 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 						}
 						ImGui::Image(MainMonitoring->thumb_texture.GetTexture(), ImVec2(MainMonitoring->aspect_ratio * 1000, 1000));
 						ImVec2 pos = ImGui::GetCursorScreenPos();
-						if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+						if (ImGui::IsItemHovered() && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)))
 						{
 							// 获取鼠标位置
 							ImVec2 mouse_pos = ImGui::GetMousePos();
 
 							// 计算鼠标在图片上的相对位置
-							float relative_x = mouse_pos.x - pos.x;
-							float relative_y = 1000 - (pos.y - mouse_pos.y) + 5;//指针高度
-
+							int relative_x = mouse_pos.x - pos.x;
+							int relative_y = 1000 - (pos.y - mouse_pos.y) + 5;//指针高度
+							MainMonitoring->command_lock.lock();
+							if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+						    	MainMonitoring->command = 1;
+							else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+								MainMonitoring->command = 2;
+							MainMonitoring->x = relative_x;
+							MainMonitoring->y = relative_y;
+							MainMonitoring->command_lock.unlock();
 							// 输出相对坐标（或者在你的代码中使用它们）
-							printf("Clicked at : (% .1f, % .1f)\n",  relative_x, relative_y);
+							printf("Clicked at : (%d, %d)\n",  relative_x, relative_y);
 						}
 					}
 					else MainMonitoring->frame_rate = 1;
