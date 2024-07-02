@@ -54,6 +54,7 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 				client_number = 0;
 				for (void* v : all_connected_clients) {
 					ClientHandler* now_draw_client = (ClientHandler*)v;
+					now_draw_client->image_lock.lock();
 					if (reset_Frame_rate) {
 						now_draw_client->frame_rate = 10;
 					}
@@ -63,7 +64,7 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 							now_draw_client->thumb_texture.Release_Texture();
 							if (now_draw_client->thumb_texture.pDevice != pd3ddevice)
 								now_draw_client->thumb_texture.pDevice = pd3ddevice;
-							now_draw_client->thumb_texture.LoadTextureFromMemory(now_draw_client->data_buffer.data(), now_draw_client->data_buffer.size());
+							now_draw_client->thumb_texture.LoadTextureFromMemory(now_draw_client->image_data.data(), now_draw_client->image_data.size());
 							now_draw_client->generated_new_texture = true;
 						}
 						else {
@@ -71,7 +72,7 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 							now_draw_client->thumb_texture.Release_Texture();
 							if (now_draw_client->thumb_texture.pDevice != pd3ddevice)
 								now_draw_client->thumb_texture.pDevice = pd3ddevice;
-							now_draw_client->thumb_texture.LoadTextureFromMemory_To_Gray(now_draw_client->data_buffer.data(), now_draw_client->data_buffer.size());
+							now_draw_client->thumb_texture.LoadTextureFromMemory_To_Gray(now_draw_client->image_data.data(), now_draw_client->image_data.size());
 							now_draw_client->off_line_pic_generated = true;
 						}
 					}
@@ -86,6 +87,7 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 						FullWindow = true;
 						MainMonitoring = now_draw_client;
 					}
+					now_draw_client->image_lock.unlock();
 				}
 				reset_Frame_rate = false;
 				ImGui::Text(u8"平均帧率 %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -99,17 +101,18 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 			{
 				bool still_online = false;
 				for (void* v : all_connected_clients) {
+					((ClientHandler*)v)->image_lock.lock();
 					if (v == MainMonitoring) {
 						still_online = true;
 						MainMonitoring->frame_rate = 30;
 						MainMonitoring->main_monitoring = true;
-						if (!MainMonitoring->generated_new_texture || !MainMonitoring->off_line_pic_generated) {
+						if ((!MainMonitoring->generated_new_texture || !MainMonitoring->off_line_pic_generated)) {
 							if (MainMonitoring->off_line_pic_generated && !MainMonitoring->generated_new_texture) {
 								ID3D11ShaderResourceView* pSRV = (ID3D11ShaderResourceView*)MainMonitoring->thumb_texture.GetTexture();
 								MainMonitoring->thumb_texture.Release_Texture();
 								if (MainMonitoring->thumb_texture.pDevice != pd3ddevice)
 									MainMonitoring->thumb_texture.pDevice = pd3ddevice;
-								MainMonitoring->thumb_texture.LoadTextureFromMemory(MainMonitoring->data_buffer.data(), MainMonitoring->data_buffer.size());
+								MainMonitoring->thumb_texture.LoadTextureFromMemory(MainMonitoring->image_data.data(), MainMonitoring->image_data.size());
 								MainMonitoring->generated_new_texture = true;
 							}
 							else {
@@ -117,13 +120,27 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 								MainMonitoring->thumb_texture.Release_Texture();
 								if (MainMonitoring->thumb_texture.pDevice != pd3ddevice)
 									MainMonitoring->thumb_texture.pDevice = pd3ddevice;
-								MainMonitoring->thumb_texture.LoadTextureFromMemory_To_Gray(MainMonitoring->data_buffer.data(), MainMonitoring->data_buffer.size());
+								MainMonitoring->thumb_texture.LoadTextureFromMemory_To_Gray(MainMonitoring->image_data.data(), MainMonitoring->image_data.size());
 								MainMonitoring->off_line_pic_generated = true;
 							}
 						}
 						ImGui::Image(MainMonitoring->thumb_texture.GetTexture(), ImVec2(MainMonitoring->aspect_ratio * 1000, 1000));
+						ImVec2 pos = ImGui::GetCursorScreenPos();
+						if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+						{
+							// 获取鼠标位置
+							ImVec2 mouse_pos = ImGui::GetMousePos();
+
+							// 计算鼠标在图片上的相对位置
+							float relative_x = mouse_pos.x - pos.x;
+							float relative_y = 1000 - (pos.y - mouse_pos.y) + 5;//指针高度
+
+							// 输出相对坐标（或者在你的代码中使用它们）
+							printf("Clicked at : (% .1f, % .1f)\n",  relative_x, relative_y);
+						}
 					}
 					else MainMonitoring->frame_rate = 1;
+					((ClientHandler*)v)->image_lock.unlock();
 				}
 				if (!still_online) {
 					MainMonitoring = NULL;

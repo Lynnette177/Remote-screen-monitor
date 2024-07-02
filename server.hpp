@@ -10,12 +10,13 @@ private:
     int udp_port = 0;
     userInfo info_struct;
     std::thread hb_thread;
-    
+    std::vector<std::uint8_t> data_buffer;
 public:
+    std::mutex image_lock;
     std::string client_info;
     int frame_rate = 10;
     bool main_monitoring = false;
-    std::vector<std::uint8_t> data_buffer;
+    std::vector<std::uint8_t> image_data;
     bool generated_new_texture = false;
     Texture thumb_texture;
     float aspect_ratio = 2.f;
@@ -24,6 +25,7 @@ public:
     bool offline_too_long_able_to_delete = false;
     bool off_line_pic_generated = false;
     bool stop_hb_thread = false;
+    
 
     ClientHandler(SOCKET _clnt_control_sock) : clnt_control_sock(_clnt_control_sock) {
         printClientInfo(true);
@@ -191,8 +193,13 @@ public:
             if (strcmp(buffer, "-!END") == 0) {
                // std::cout << "Received END, processing data..." << std::endl;
                 //std::cout << "Data size: " << data_buffer.size() << " bytes" << std::endl;
+                image_lock.lock();
+                image_data.clear();
+                image_data = data_buffer;
+                data_buffer.clear();
                 new_pic = true;
                 generated_new_texture = false;
+                image_lock.unlock();
             }
             else {
                 // ÀÛ»ýÊý¾Ý

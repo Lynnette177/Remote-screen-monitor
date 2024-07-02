@@ -77,7 +77,7 @@ public: Texture(ID3D11Device* pDevice = NULL)
       }
 
       void Release_Texture() {
-          if (texture != NULL) {
+          if ((void*)texture != NULL) {
               texture->Release();
               texture = NULL;
           }
@@ -125,7 +125,8 @@ private:
         srvDesc.Texture2D.MipLevels = desc.MipLevels;
         srvDesc.Texture2D.MostDetailedMip = 0;
         pDevice->CreateShaderResourceView(pTexture, &srvDesc, &texture);
-        pTexture->Release();
+        if (pTexture != NULL)
+            pTexture->Release();
     }
 
     std::int32_t image_width = 0;

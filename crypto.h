@@ -225,6 +225,7 @@ int aes_decrypt_base_to_bytes(std::string key, std::string iv, unsigned char* ci
     *plaintext_ptr = new unsigned char[length+10];
     memset(*plaintext_ptr, 0, length + 10);
     memcpy_s(*plaintext_ptr, length, plaintext, length);
+    delete[] plaintext;
     return length;
 }
 

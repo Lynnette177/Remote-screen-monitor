@@ -30,6 +30,7 @@
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
+#include <mutex>
 
 #define KEY_BUFFER_SIZE 2048
 #define RSA_KEY_LENGTH 2048
