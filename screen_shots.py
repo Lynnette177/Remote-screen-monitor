@@ -2,6 +2,8 @@ from PIL import Image
 import pyautogui
 import io
 
+main_monitoring = False
+
 
 def get_w_h():  # 获取屏幕宽高
     screenshot = pyautogui.screenshot()
@@ -9,13 +11,19 @@ def get_w_h():  # 获取屏幕宽高
 
 
 def get_screen_pic_byte_array():
+    global main_monitoring
     # 获取截图
     screenshot = pyautogui.screenshot()
+    division = 1
+    quality = 80
+    if not main_monitoring:
+        quality = 20
+        division = 6
     # 降低分辨率
-    screenshot = screenshot.resize((screenshot.width // 6, screenshot.height // 6), Image.ANTIALIAS)
+    screenshot = screenshot.resize((screenshot.width // division, screenshot.height // division), Image.ANTIALIAS)
     # 将截图保存到字节流中，以JPEG格式，降低质量
     byte_io = io.BytesIO()
-    screenshot.save(byte_io, format='JPEG', quality=20)  # 质量参数可以根据需要调整
+    screenshot.save(byte_io, format='JPEG', quality=quality)  # 质量参数可以根据需要调整
     # 获取字节数据
     byte_data = byte_io.getvalue()
     # 将字节数据转换为 bytearray

@@ -4,11 +4,15 @@ import sys
 import tkinter as tk
 import threading
 from PyQt5.QtWidgets import QApplication, QMainWindow
+
+import screen_shots
 from intro import Ui_MainWindow  # 导入生成的ui文件
 from crypto_util import *
 from screen_shots import *
 
 udp_signal = 1
+
+global_frame_rate = 30
 
 public_key_pem_recvd = ""
 server_secret = ""
@@ -52,6 +56,7 @@ def tcp_shake_hand(ip, port):
         aes_key, aes_iv = generate_aes_key()
         plain_text = f"test;crack;{aes_key.decode()};{aes_iv.decode()}"
         str_to_response = rsa_crypto(public_key_pem_recvd, plain_text)
+        print(str_to_response)
         sock.sendall(str_to_response)
 
         buffer = b""
@@ -87,6 +92,40 @@ def tcp_shake_hand(ip, port):
         sock.close()
         return False
 
+
+def heart_beat():
+    global global_frame_rate
+    global tcp_sock
+    try:
+        while True:
+            tcp_sock.sendall(aes_encrypt(b"HeartBeat").encode())
+            buffer = b""
+            while True:
+                data = tcp_sock.recv(1024)
+                if not data:
+                    break
+                buffer += data
+                if buffer.endswith(b"\x01"):
+                    buffer = buffer[:-1]
+                    decrypted_result = aes_decrypt(buffer)
+                    parts = decrypted_result.decode().split(';')
+                    part1 = parts[0]
+                    part2 = parts[1]
+                    if not part1.isdigit():
+                        break
+                    frame_rate = int(part1)
+                    if global_frame_rate != frame_rate:
+                        global_frame_rate = frame_rate
+                    if part2 == 'M':
+                        screen_shots.main_monitoring = True
+                    break
+            time.sleep(2)
+    except Exception as e:
+        print(e)
+        return False
+
+
+
 def close_tcp():
     try:
         tcp_sock.close()
@@ -97,6 +136,7 @@ def close_tcp():
 
 def udp_client(server_ip, server_port, chunk_size=700):
     # 创建UDP套接字
+    global global_frame_rate
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         while udp_signal:
@@ -106,12 +146,11 @@ def udp_client(server_ip, server_port, chunk_size=700):
             for chunk in chunks:
                 encrypted_chuck = aes_encrypt(chunk)
                 sent = sock.sendto(encrypted_chuck.encode(), (server_ip, server_port))
-                print(sent)
             # 发送一个结束包，内容可以是一个特定的标识符“-!END”
             end_message = b'-!END'
             sent = sock.sendto(end_message, (server_ip, server_port))
 
-            time.sleep(0.03)
+            time.sleep(1/global_frame_rate)
 
     finally:
         # 关闭套接字
@@ -177,6 +216,10 @@ if __name__ == "__main__":
     y_coordinate = int((screen_height - window_height)-100)
     root.geometry(f'{window_width}x{window_height}+{x_coordinate}+{y_coordinate}')
     thread = threading.Thread(target=udp_client, args=(servers_ip, udp_port))
+    heartbeat_thread = threading.Thread(target=heart_beat, args=())
+    thread.daemon = True
+    heartbeat_thread.daemon = True
     thread.start()
+    heartbeat_thread.start()
     root.mainloop()
 
