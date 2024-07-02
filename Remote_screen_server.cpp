@@ -21,7 +21,6 @@ int main()
     // 线程在后台运行
     serverThread.detach(); 
     UI_imgui::Render();
-    while (!GetAsyncKeyState(VK_F1)) {}
     server.stop();
     return 0;
 

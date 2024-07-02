@@ -23,7 +23,43 @@ public: Texture(ID3D11Device* pDevice = NULL)
           std::uint8_t* image_data = stbi_load_from_memory(image_buffer, buffer_size, &image_width, &image_height, NULL, 4);
           return LoadTexture(image_data);
       }
+      bool LoadTextureFromMemory_To_Gray(const std::uint8_t* image_buffer, int buffer_size)
+      {
+          int image_width, image_height, channels;
+          std::uint8_t* image_data = stbi_load_from_memory(image_buffer, buffer_size, &image_width, &image_height, &channels, 4);
 
+          if (image_data == nullptr)
+          {
+              return false; // 图像加载失败
+          }
+
+          // 将图像转换为灰度图像
+          for (int y = 0; y < image_height; ++y)
+          {
+              for (int x = 0; x < image_width; ++x)
+              {
+                  int index = (y * image_width + x) * 4;
+                  uint8_t r = image_data[index];
+                  uint8_t g = image_data[index + 1];
+                  uint8_t b = image_data[index + 2];
+                  uint8_t a = image_data[index + 3];
+
+                  // 计算灰度值（使用简单平均值方法，或者其他加权方法）
+                  uint8_t gray = static_cast<uint8_t>(0.299 * r + 0.587 * g + 0.114 * b);
+
+                  // 将 RGB 通道设置为灰度值
+                  image_data[index] = gray;
+                  image_data[index + 1] = gray;
+                  image_data[index + 2] = gray;
+                  image_data[index + 3] = a; // 保持 Alpha 通道不变
+              }
+          }
+
+          // 加载转换后的图像
+          bool result = LoadTexture(image_data);
+
+          return result;
+      }
       // Load texture with the image data that you have, or use LoadTextureFromFile or LoadTextureFromMemory
       bool LoadTexture(std::uint8_t* image_data)
       {
@@ -38,6 +74,13 @@ public: Texture(ID3D11Device* pDevice = NULL)
       ImTextureID GetTexture()
       {
           return (void*)texture;
+      }
+
+      void Release_Texture() {
+          if ((void*)texture != NULL) {
+              texture->Release();
+              texture = NULL;
+          }
       }
 
       // Gets you the original width of the image!

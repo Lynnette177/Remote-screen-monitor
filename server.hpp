@@ -9,13 +9,20 @@ private:
     SOCKET clnt_data_sock;
     int udp_port = 0;
     userInfo info_struct;
+    std::thread hb_thread;
     
 public:
     std::string client_info;
+    int frame_rate = 10;
     std::vector<std::uint8_t> data_buffer;
     bool generated_new_texture = false;
     Texture thumb_texture;
     float aspect_ratio = 2.f;
+    bool online = false;
+    uint64_t offline_time = 0;
+    bool offline_too_long_able_to_delete = false;
+    bool off_line_pic_generated = false;
+    bool stop_hb_thread = false;
 
     ClientHandler(SOCKET _clnt_control_sock) : clnt_control_sock(_clnt_control_sock) {
         printClientInfo(true);
@@ -107,9 +114,16 @@ public:
             }
             else {
                 all_connected_clients.push_back(this);
+                hb_thread = std::thread(&ClientHandler::heart_beat_detect, this);
                 udp_handler();
+                closesocket(clnt_control_sock);
+                closesocket(clnt_data_sock);
+                auto it = std::remove(all_connected_clients.begin(), all_connected_clients.end(), this);
+                // 使用erase删除从std::remove返回的迭代器到vector末尾的元素
+                all_connected_clients.erase(it, all_connected_clients.end());
+                hb_thread.join();
+                return;
             }
-            closesocket(clnt_control_sock);
         }
         catch (const std::exception& e) {
             std::cerr << "Exception in client_handler: " << e.what() << std::endl;
@@ -148,13 +162,22 @@ public:
     }
     void udp_handler() {
         bool new_pic = true;
-        while (true) {
+        struct timeval tv;
+        tv.tv_sec = 10;  // 超时时间为10秒
+        tv.tv_usec = 0; // 微秒部分置为0
+
+        if (setsockopt(clnt_data_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv)) < 0) {
+            std::cerr << "Error setting socket options" << std::endl;
+            return;
+        }
+        while (!offline_too_long_able_to_delete) {
             char buffer[1024] = { 0 };
             struct sockaddr_in client_addr;
             int client_addr_len = sizeof(client_addr);
 
             // 接收数据包
             int recv_len = recvfrom(clnt_data_sock, buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr, &client_addr_len);
+            if (!(recv_len > 0)) continue;
             if (new_pic) {
                 data_buffer.clear();
                 new_pic = false;
@@ -185,6 +208,47 @@ public:
 
              // 你可以在这里发送响应数据包，如果需要
              // sendto(serv_sock, buffer, recv_len, 0, (struct sockaddr*)&client_addr, client_addr_len);
+        }
+    }
+    void heart_beat_detect() {
+        char buffer[1024] = {};
+        // 接收数据
+        while (!stop_hb_thread) {
+            int recv_len = recv(clnt_control_sock, buffer, sizeof(buffer), 0);
+            if (recv_len < 0) {
+                if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                    //std::cerr << "Receive timeout!" << std::endl;
+                    online = false;
+                }
+                else {
+                    //std::cerr << "Receive failed! " << errno << std::endl;
+                    online = false;
+                }
+            }
+            else if (recv_len == 0) {
+                //std::cout << "Connection closed by peer!" << std::endl;
+                online = false;
+            }
+            else {
+                buffer[recv_len] = '\0'; // 确保字符串以NULL结尾
+                std::string plain_text = aes_decrypt_base_to_string(info_struct.aes_key, info_struct.aes_iv, (unsigned char*)buffer);
+                std::cout << "Received Decryptied: " << plain_text << std::endl;
+                online = true;
+                send_control_message(aes_encrypt_base(info_struct.aes_key, info_struct.aes_iv,(unsigned char*)std::to_string(frame_rate).c_str()).c_str());
+            }
+            if (!online && offline_time == 0) {
+                offline_time = GetTickCount64();
+                off_line_pic_generated = false;
+            }
+            else if (online && offline_time != 0) {
+                offline_time = 0;
+            }
+            else if (!online && offline_time != 0) {
+                if (GetTickCount64() - offline_time > 10000) {
+                    offline_too_long_able_to_delete = true;
+                    break;
+                }
+            }
         }
     }
 };
@@ -268,13 +332,13 @@ public:
 
     void stop() {
         stop_server = true;
-
+        /*
         for (auto& thread : client_threads) {
             if (thread.joinable()) {
                 thread.join();
             }
         }
-
+        */
         if (serv_sock != INVALID_SOCKET) {
             closesocket(serv_sock);
             serv_sock = INVALID_SOCKET;

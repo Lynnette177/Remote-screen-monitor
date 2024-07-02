@@ -167,7 +167,9 @@ void UI_imgui::Render()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.Fonts->AddFontFromMemoryTTF((void*)DeYiHei_data, DeYiHei_size, 24.f, NULL, io.Fonts->GetGlyphRangesChineseFull());
+    ImFontConfig font_cfg;
+    font_cfg.FontDataOwnedByAtlas = false; // 设置为 false，意思是静态数组，防止 ImGui 释放数据
+    io.Fonts->AddFontFromMemoryTTF((void*)DeYiHei_data, DeYiHei_size, 24.f, &font_cfg, io.Fonts->GetGlyphRangesChineseFull());
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
