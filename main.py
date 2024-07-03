@@ -127,7 +127,7 @@ def heart_beat():  # 发送心跳，接收指令
     global height
     try:
         while True:
-            tcp_sock.sendall(aes_encrypt(b"HeartBeat").encode())
+            tcp_sock.sendall(aes_encrypt(b"HeartBeat;").encode())
             buffer = b""
             while True:
                 data = tcp_sock.recv(1024)
