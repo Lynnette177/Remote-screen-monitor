@@ -44,6 +44,7 @@ void Render_History(ClientHandler* client, const std::string& id, bool * show_hi
 	static Texture Clicked_Full_screen_image;
 	static bool show_full_screen = false;
 	static std::string show_full_screen_name;
+
 	ImGui::SetNextWindowSize(ImVec2(1200,900),ImGuiCond_Once);
 	ImGui::Begin((id + u8"的历史图片").c_str(), show_history, 0);
 	std::string rpath = Get_path_by_id(id);
@@ -134,6 +135,7 @@ void Render_History(ClientHandler* client, const std::string& id, bool * show_hi
 		for (auto& pair : client->pic_textures) {
 			pair.second.Release_Texture();
 		}
+		show_full_screen = false;
 		client->pic_textures.clear();
 		client->pic_textures.shrink_to_fit(); // 请求释放未使用的内存
 	}
