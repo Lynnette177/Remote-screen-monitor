@@ -242,8 +242,19 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 						now_draw_client->able_to_save = true;//只有当选择保存这个，并且计时已经超过用户设置值，则标识位记为真
 						did_save = true;//用于在循环外重置计时
 					}
-					if (ImGui::Button(history.str().c_str()))
+					if (ImGui::Button(history.str().c_str())) {
 						now_draw_client->show_history = true;
+						for (const auto& other : all_connected_clients) {
+							if ((ClientHandler*)other != now_draw_client && ((ClientHandler*)other)->show_history == true) {
+								((ClientHandler*)other)->show_history = false;
+								for (auto& pair : ((ClientHandler*)other)->pic_textures) {
+									pair.second.Release_Texture();
+								}
+								((ClientHandler*)other)->pic_textures.clear();
+								((ClientHandler*)other)->pic_textures.shrink_to_fit();
+							}
+						}
+					}
 					if (now_draw_client->show_history) {
 						Render_History(now_draw_client,(now_draw_client->id).c_str(),&now_draw_client->show_history, pd3ddevice);
 					}
