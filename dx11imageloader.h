@@ -1,6 +1,6 @@
 #pragma once
 
-#define STB_IMAGE_IMPLEMENTATION// <---- define this if you haven't already!
+#define STB_IMAGE_IMPLEMENTATION
 #include "includes.h"
 #include <cstdint>
 #include <d3d11.h>
@@ -60,7 +60,7 @@ public: Texture(ID3D11Device* pDevice = NULL)
 
           return result;
       }
-      // Load texture with the image data that you have, or use LoadTextureFromFile or LoadTextureFromMemory
+      // 加载纹理。分别是从文件和从内存加载纹理，以及加载成灰度图(仅黑白)
       bool LoadTexture(std::uint8_t* image_data)
       {
           if (!image_data)
@@ -83,13 +83,13 @@ public: Texture(ID3D11Device* pDevice = NULL)
           }
       }
 
-      // Gets you the original width of the image!
+      // 获取原始图片宽度
       std::int32_t GetWidth()
       {
           return image_width;
       }
 
-      // Gets you the original height of the image!
+      // 获取原始图片高度
       std::int32_t GetHeight()
       {
           return image_height;

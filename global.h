@@ -28,8 +28,6 @@ void parse_userInfo(userInfo* output, std::string receive_str) {//´¦Àí¿Í»§¶Ë·¢À´
     output->aes_key = key;
     output->aes_iv = iv;
 }
-
-
 std::string getCurrentTime() {//»ñÈ¡µ±Ç°Ê±¼ä£¬±£´æ½ØÍ¼Ê±ÎÄ¼şÃûÓÃ
     // »ñÈ¡µ±Ç°Ê±¼äµã
     std::time_t now = std::time(nullptr);
@@ -42,15 +40,11 @@ std::string getCurrentTime() {//»ñÈ¡µ±Ç°Ê±¼ä£¬±£´æ½ØÍ¼Ê±ÎÄ¼şÃûÓÃ
     oss << std::put_time(&localTime, "%Y-%m-%d %H:%M:%S");
     return oss.str();
 }
-
-
 std::string Get_path_by_id(const std::string& id) {
     std::string rpath = id;
     std::replace(rpath.begin(), rpath.end(), ':', '_');
     return rpath;
 }
-
-
 void createDirectoryIfNotExists(const std::string& directoryPath) {//¼ì²éÄ¿Â¼ÊÇ·ñ´æÔÚ£¬²»´æÔÚÔò´´½¨¡£±£´æ½ØÍ¼Ê±ÓÃ
     if (!fs::exists(directoryPath)) {
         if (fs::create_directories(directoryPath)) {
@@ -64,7 +58,6 @@ void createDirectoryIfNotExists(const std::string& directoryPath) {//¼ì²éÄ¿Â¼ÊÇ·
         std::cout << "Directory already exists: " << directoryPath << std::endl;
     }
 }
-
 //°Ñvector<uint8_t>ÖĞµÄÊı¾İ´æÈëÎÄ¼şÖĞ¡£ÆäÖĞÌæ»»µôÁË:ÒòÎªÊÇÎÄ¼şÃû²»ÄÜ´æÔÚµÄ·Ç·¨×Ö·û
 void saveVectorToBinaryFile(const std::vector<uint8_t>& data, const std::string& id, const std::string& filename) {
     std::string rpath = Get_path_by_id(id);
@@ -88,8 +81,6 @@ void saveVectorToBinaryFile(const std::vector<uint8_t>& data, const std::string&
         std::cerr << "Error occurred while writing to file: " << filename_with_path << std::endl;
     }
 }
-
-
 std::vector<uint8_t> readFileToVector(const std::string& filePath) {
     // ´ò¿ªÎÄ¼ş²¢ÉèÖÃÎª¶ş½øÖÆÄ£Ê½
     std::ifstream file(filePath, std::ios::binary);
