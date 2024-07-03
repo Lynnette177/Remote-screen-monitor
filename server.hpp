@@ -13,6 +13,7 @@ private:
     std::thread hb_thread;//心跳和指令发送的线程
     std::vector<std::uint8_t> data_buffer;//图片缓冲区容器
 public:
+    bool show_history = false;//是否新建一个窗口展示截图
     bool able_to_save = false;//是否能够保存截图
     std::mutex image_lock;//图片容器读写互斥锁
     std::mutex command_lock;//指令读写的互斥锁
@@ -24,12 +25,14 @@ public:
     int frame_rate = 10;//客户端监控帧率
     bool main_monitoring = false;//是否启用高分辨率
     std::vector<std::uint8_t> image_data;//生成纹理用的图片数据容器
+    std::vector<std::pair<std::string, Texture>> pic_textures;//历史记录图片容器
     bool generated_new_texture = false;//是否已经为图片生成过了纹理
     Texture thumb_texture;//图片纹理
     float aspect_ratio = 2.f;//客户端屏幕宽高比
     bool online = false;//客户是否在线
     uint64_t offline_time = 0;//客户离线时间
-    bool offline_too_long_able_to_delete = false;//客户离线时间过长，准备移除
+    bool do_delete_this_client = false;//如果用户点击了删除，置为真，结束线程回收内存
+    bool offline_too_long_able_to_delete = false;//如果离线时间超过十秒，允许删除
     bool off_line_pic_generated = false;//客户离线的灰色截图已经生成过
     bool stop_hb_thread = false;//是否结束心跳线程
     bool save_image = false;//是否保存屏幕截图
@@ -196,7 +199,7 @@ public:
             std::cerr << "Error setting socket options" << std::endl;
             return;
         }
-        while (!offline_too_long_able_to_delete) {
+        while (!do_delete_this_client) {
             char buffer[1024] = { 0 };
             struct sockaddr_in client_addr;
             int client_addr_len = sizeof(client_addr);
@@ -295,6 +298,7 @@ public:
             }
             else if (online && offline_time != 0) {
                 offline_time = 0;
+                offline_too_long_able_to_delete = false;
             }
             else if (!online && offline_time != 0) {
                 if (GetTickCount64() - offline_time > 10000) {

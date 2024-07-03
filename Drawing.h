@@ -5,6 +5,7 @@
 #include "global.h"
 #include "dx11imageloader.h"
 #include "UI.h"
+
 class Drawing
 {//绘制类。包含窗口名，size等基本信息
 private:
@@ -20,7 +21,7 @@ public:
 };
 
 LPCSTR Drawing::lpWindowName = u8"远程屏幕监控系统";
-ImVec2 Drawing::vWindowSize = { 900, 600 };
+ImVec2 Drawing::vWindowSize = { 1500, 700 };
 ImGuiWindowFlags Drawing::WindowFlags = 0;
 bool Drawing::bDraw = true;
 bool FullWindow = false;
@@ -35,6 +36,110 @@ bool Drawing::isActive()
 {
 	return bDraw == true;
 }
+
+void Render_History(ClientHandler* client, const std::string& id, bool * show_history, ID3D11Device* pd3ddevice) {
+	static ImVec2 history_windows_location = {};
+	static const std::regex pattern(R"((\d{4})-(\d{2})-(\d{2}) (\d{2})_(\d{2})_(\d{2})\.jpeg)");
+	static ImVec2 full_screen_pic_size = {};
+	static Texture Clicked_Full_screen_image;
+	static bool show_full_screen = false;
+	static std::string show_full_screen_name;
+	ImGui::SetNextWindowSize(ImVec2(1200,900),ImGuiCond_Once);
+	ImGui::Begin((id + u8"的历史图片").c_str(), show_history, 0);
+	std::string rpath = Get_path_by_id(id);
+	if (!fs::exists(rpath)) {
+		ImGui::Text(u8"没有任何历史记录\n可以试着点击记录历史的按钮再来看看");
+		ImGui::End();
+		return;
+	}
+	int pic_count = 0;
+	try {
+		for (const auto& entry : fs::directory_iterator(rpath)) {
+			if (fs::is_regular_file(entry.path())) { // 只处理普通文件
+				if (std::regex_match(entry.path().filename().string(), pattern)) {
+					std::string pic_name = entry.path().filename().string();
+					pic_count++;
+					auto it = std::find_if(client->pic_textures.begin(), client->pic_textures.end(), [&pic_name](const std::pair<std::string, Texture>& element) {
+						return element.first == pic_name;
+						});
+					if (it != client->pic_textures.end()) {}
+						//std::cout<<"FOUND!\n";
+					else {
+						Texture history_pic_texture(pd3ddevice);
+						std::vector<uint8_t> image_data_history = readFileToVector(rpath + "/" + pic_name);
+						history_pic_texture.LoadTextureFromMemory(image_data_history.data(), image_data_history.size());
+						client->pic_textures.push_back(std::make_pair(pic_name, history_pic_texture));
+					}
+
+				}
+				else {
+					//std::cout << entry.path().filename() << " 不符合格式" << std::endl;
+				}
+			}
+			
+		}
+	}
+	catch (const fs::filesystem_error& e) {
+		std::cerr << "Filesystem error: " << e.what() << std::endl;
+	}
+	if (pic_count == 0) {
+		ImGui::Text(u8"没有任何历史记录\n可以试着点击记录历史的按钮再来看看");
+		ImGui::End();
+		return;
+	}
+	ImGui::Text(u8"有%d条历史记录",pic_count);
+	ImVec2 pic_size(client->aspect_ratio * 100, 100);
+	float windows_size_x = (int)ImGui::GetWindowSize().x;
+	int redered_pic_count = 0;
+	int column = 0;
+	int row = 0;
+	int max_x = int(ImGui::GetWindowSize().x) / 300;
+	for (const auto& pair : client->pic_textures) {
+		const std::string& name = pair.first;
+		ImGui::SetCursorPos(ImVec2(column * 300 + 10, 100 + row * 150));
+		column++;
+		if (column >= max_x) {
+			column = 0;
+			row++;
+		}
+		ImGui::BeginChild(name.c_str(), ImVec2(300, 150), true);
+		Texture texture = pair.second;
+		ImGui::Image(texture.GetTexture(), pic_size); // 绘制图片
+		if (ImGui::IsItemClicked())
+		{
+			std::cout << "Cliecked" << std::endl;
+			Clicked_Full_screen_image = texture;
+			show_full_screen_name = id + "/" + name;
+			full_screen_pic_size = ImVec2(client->aspect_ratio * 1000, 1000);
+			show_full_screen = true;
+		}
+		
+		ImGui::Text(name.c_str());
+		redered_pic_count++;
+		ImGui::EndChild();
+	}
+	ImGui::End();
+	if (show_full_screen)
+	{
+		ImGui::SetNextWindowSize(ImVec2(full_screen_pic_size.x,full_screen_pic_size.y+50), ImGuiCond_Appearing);
+		ImGui::SetNextWindowPos(history_windows_location, ImGuiCond_Appearing);
+		ImGui::StyleColorsDark();
+		ImGui::Begin((show_full_screen_name + u8"历史记录大图展示").c_str(), &show_full_screen);
+		ImGui::Image(Clicked_Full_screen_image.GetTexture(), full_screen_pic_size);
+		history_windows_location = ImGui::GetWindowPos();
+		ImGui::End();
+		ImGui::StyleColorsLight();
+	}
+	if (!*show_history) {
+		for (auto& pair : client->pic_textures) {
+			pair.second.Release_Texture();
+		}
+		client->pic_textures.clear();
+		client->pic_textures.shrink_to_fit(); // 请求释放未使用的内存
+	}
+	return;
+}
+
 
 void Drawing::Draw(ID3D11Device* pd3ddevice)
 {
@@ -60,20 +165,20 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 			{
 				int max_x = int(ImGui::GetWindowSize().x) / 300;
 				ImGui::Text(u8"已有%d个客户端建立连接。", client_number);
-				ImGui::SliderInt(u8"自动保存图片时间间隔(秒)", &save_interval, 10, 120);
+				ImGui::SliderInt(u8"自动保存图片(历史)时间间隔(秒)", &save_interval, 10, 120);
 				client_number = 0;
 				bool did_save = false;
 				int row = 0;
 				int column = 0;
 				for (const auto& v : all_connected_clients) {//遍历所有客户端，分别绘制
-					ImGui::SetCursorPos(ImVec2(column * 300 + 10, 100 + row * 240));
+					ImGui::SetCursorPos(ImVec2(column * 300 + 10, 100 + row * 280));
 					column++;
 					if (column >= max_x) {
 						column = 0;
 						row++;
 					}
 					ClientHandler* now_draw_client = (ClientHandler*)v;
-					ImGui::BeginChild(std::to_string(client_number).c_str(), ImVec2(300, 240), true);
+					ImGui::BeginChild(std::to_string(client_number).c_str(), ImVec2(300, 280), true);
 
 					std::lock_guard<std::mutex> lock(now_draw_client->image_lock); // 自动管理锁
 					if (reset_Frame_rate) {
@@ -108,13 +213,17 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 					ImGui::Text((now_draw_client->id).c_str());
 					if (now_draw_client->online)
 						ImGui::Text((now_draw_client->client_info + u8" 在线").c_str());
-					else
-						ImGui::Text((now_draw_client->client_info + u8" 离线").c_str());
+					else {
+						 std::string offline_time_str = std::to_string((GetTickCount64() - now_draw_client->offline_time) / 1000) + u8"秒";
+						ImGui::Text((now_draw_client->client_info + u8" 离线" + offline_time_str).c_str());
+					}
 					ImGui::Image(now_draw_client->thumb_texture.GetTexture(), ImVec2(now_draw_client->aspect_ratio * 100, 100)); // 绘制图片
-					std::ostringstream oss, buttonlable, tickbox;
+					std::ostringstream oss, buttonlable, tickbox,delete_button,history;
 					oss << u8"监控帧率 " << client_number;
 					buttonlable << u8"全屏客户" << client_number;
-					tickbox << u8"自动保存截图" << client_number;
+					tickbox << u8"自动截图(保存历史)" << client_number;
+					delete_button << u8"删除" << client_number;
+					history << u8"查看历史" << client_number;
 					ImGui::SliderInt(oss.str().c_str(), &((ClientHandler*)v)->frame_rate, 1, 100);
 					if (ImGui::Button(buttonlable.str().c_str())) {
 						FullWindow = true;
@@ -123,15 +232,25 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 					}
 					ImGui::SameLine();
 					//检测是否用户点击了CheckBox
-					bool tmp_tick = ((ClientHandler*)v)->save_image;
-					ImGui::Checkbox(tickbox.str().c_str(), &((ClientHandler*)v)->save_image);
-					if (!tmp_tick == ((ClientHandler*)v)->save_image) save_time = 0;//如果点击了累计时间清零 保存所有图片重新开始计时
-					((ClientHandler*)v)->main_monitoring = ((ClientHandler*)v)->save_image;//如果确定要保存把这个置为真通知客户端要获取高分辨率的图片，因为下一次加载图片的时候要保存了
-					if (((ClientHandler*)v)->save_image && GetTickCount64() - save_time > save_interval * 1000) {
-						((ClientHandler*)v)->able_to_save = true;//只有当选择保存这个，并且计时已经超过用户设置值，则标识位记为真
+					bool tmp_tick = now_draw_client->save_image;
+					ImGui::Checkbox(tickbox.str().c_str(), &now_draw_client->save_image);
+					if (!tmp_tick == now_draw_client->save_image) save_time = 0;//如果点击了累计时间清零 保存所有图片重新开始计时
+					now_draw_client->main_monitoring = now_draw_client->save_image;//如果确定要保存把这个置为真通知客户端要获取高分辨率的图片，因为下一次加载图片的时候要保存了
+					if (now_draw_client->save_image && GetTickCount64() - save_time > save_interval * 1000) {
+						now_draw_client->able_to_save = true;//只有当选择保存这个，并且计时已经超过用户设置值，则标识位记为真
 						did_save = true;//用于在循环外重置计时
 					}
-
+					if (ImGui::Button(history.str().c_str()))
+						now_draw_client->show_history = true;
+					if (now_draw_client->show_history) {
+						Render_History(now_draw_client,(now_draw_client->id).c_str(),&now_draw_client->show_history, pd3ddevice);
+					}
+					if (now_draw_client->offline_too_long_able_to_delete) {
+						ImGui::SameLine();
+						if (ImGui::Button(delete_button.str().c_str())) {
+							now_draw_client->do_delete_this_client = true;
+						}
+					}
 					ImGui::EndChild();
 				}
 				reset_Frame_rate = false;

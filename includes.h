@@ -35,6 +35,7 @@
 #include <filesystem>
 #include <ctime>
 #include <iomanip>
+#include <regex>
 
 //RSA缓冲区相关的大小定义
 #define KEY_BUFFER_SIZE 2048

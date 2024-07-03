@@ -44,6 +44,13 @@ std::string getCurrentTime() {//»ñÈ¡µ±Ç°Ê±¼ä£¬±£´æ½ØÍ¼Ê±ÎÄ¼şÃûÓÃ
 }
 
 
+std::string Get_path_by_id(const std::string& id) {
+    std::string rpath = id;
+    std::replace(rpath.begin(), rpath.end(), ':', '_');
+    return rpath;
+}
+
+
 void createDirectoryIfNotExists(const std::string& directoryPath) {//¼ì²éÄ¿Â¼ÊÇ·ñ´æÔÚ£¬²»´æÔÚÔò´´½¨¡£±£´æ½ØÍ¼Ê±ÓÃ
     if (!fs::exists(directoryPath)) {
         if (fs::create_directories(directoryPath)) {
@@ -59,10 +66,10 @@ void createDirectoryIfNotExists(const std::string& directoryPath) {//¼ì²éÄ¿Â¼ÊÇ·
 }
 
 //°Ñvector<uint8_t>ÖĞµÄÊı¾İ´æÈëÎÄ¼şÖĞ¡£ÆäÖĞÌæ»»µôÁË:ÒòÎªÊÇÎÄ¼şÃû²»ÄÜ´æÔÚµÄ·Ç·¨×Ö·û
-void saveVectorToBinaryFile(const std::vector<uint8_t>& data, const std::string& path, const std::string& filename) {
-    std::string rpath = path;
+void saveVectorToBinaryFile(const std::vector<uint8_t>& data, const std::string& id, const std::string& filename) {
+    std::string rpath = Get_path_by_id(id);
+
     std::string rname = filename;
-    std::replace(rpath.begin(), rpath.end(), ':', '_');
     std::replace(rname.begin(), rname.end(), ':', '_');
     std::cout << rpath << std::endl;
     std::cout << rname << std::endl;
@@ -80,4 +87,28 @@ void saveVectorToBinaryFile(const std::vector<uint8_t>& data, const std::string&
     if (!outputFile.good()) {
         std::cerr << "Error occurred while writing to file: " << filename_with_path << std::endl;
     }
+}
+
+
+std::vector<uint8_t> readFileToVector(const std::string& filePath) {
+    // ´ò¿ªÎÄ¼ş²¢ÉèÖÃÎª¶ş½øÖÆÄ£Ê½
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("ÎŞ·¨´ò¿ªÎÄ¼ş: " + filePath);
+    }
+
+    // »ñÈ¡ÎÄ¼ş´óĞ¡
+    file.seekg(0, std::ios::end);
+    std::streamsize fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    // ´´½¨Ò»¸öÓëÎÄ¼ş´óĞ¡ÏàÍ¬µÄvector
+    std::vector<uint8_t> buffer(fileSize);
+
+    // ¶ÁÈ¡ÎÄ¼şÄÚÈİµ½vectorÖĞ
+    if (!file.read(reinterpret_cast<char*>(buffer.data()), fileSize)) {
+        throw std::runtime_error("¶ÁÈ¡ÎÄ¼şÊ§°Ü: " + filePath);
+    }
+
+    return buffer;
 }
