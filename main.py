@@ -11,6 +11,7 @@ from intro import Ui_MainWindow  # 导入由ui生成的文件
 from crypto_util import *
 from screen_shots import *
 import uuid
+import pystray
 
 udp_signal = 1
 
@@ -28,11 +29,24 @@ password = ""
 mac_address = ""
 
 
-def on_button_click():  # 当用户按下退出按钮
+def on_exit_button_click():  # 当用户按下退出按钮
     global udp_signal
     udp_signal = 0
     close_tcp()
     sys.exit(0)
+
+
+def on_restore(icon, item):
+    icon.stop()  # 停止图标
+    root.deiconify()  # 恢复主窗口
+
+
+def on_tray_button_click():
+    root.withdraw()  # 隐藏主窗口
+    image = create_image()
+    menu = pystray.Menu(pystray.MenuItem("恢复", on_restore))
+    icon = pystray.Icon("test", image, "Test Tray Icon", menu)
+    icon.run()
 
 
 def show_popup(title, message):  # 显示弹窗的函数
@@ -244,18 +258,19 @@ if __name__ == "__main__":
     root.attributes('-alpha', 0.7)  # 设置透明度，0为完全透明，1为不透明
     root.attributes('-topmost', True)  # 窗口始终置于最顶层
     root.configure(bg='#333333')  # 设置窗口背景色为浅黑色
-
     # 创建文本标签
     label = tk.Label(root, text="正在进行屏幕监控", font=("Helvetica", 12), fg='white', bg='#333333')
-    label.pack(padx=10, pady=20)
+    label.pack(padx=10, pady=5)
 
     # 创建按钮
-    button = tk.Button(root, text="点击退出", command=on_button_click)
-    button.pack(pady=10)
+    button = tk.Button(root, text="点击退出", command=on_exit_button_click)
+    button.pack(pady=5)
+    button1 = tk.Button(root, text="最小到托盘", command=on_tray_button_click)
+    button1.pack(pady=10)
 
     # 让窗口显示在屏幕右下角
     window_width = 150
-    window_height = 100
+    window_height = 130
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     x_coordinate = int((screen_width - window_width))
@@ -268,6 +283,5 @@ if __name__ == "__main__":
     heartbeat_thread.daemon = True
     thread.start()
     heartbeat_thread.start()
-
     root.mainloop()
 
