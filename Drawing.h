@@ -43,6 +43,7 @@ void Render_History(ClientHandler* client, const std::string& id, bool * show_hi
 	static ImVec2 full_screen_pic_size = {};
 	static Texture Clicked_Full_screen_image;
 	static bool show_full_screen = false;
+	static bool render_video = false;
 	static std::string show_full_screen_name;
 
 	ImGui::SetNextWindowSize(ImVec2(1200,900),ImGuiCond_Once);
@@ -89,6 +90,12 @@ void Render_History(ClientHandler* client, const std::string& id, bool * show_hi
 		return;
 	}
 	ImGui::Text(u8"有%d条历史记录",pic_count);
+	ImGui::SameLine();
+	if (ImGui::Button(u8"作为视频播放")) {
+		render_video = true;
+		full_screen_pic_size = ImVec2(client->aspect_ratio * 1000, 1000);
+	}
+	
 	ImVec2 pic_size(client->aspect_ratio * 100, 100);
 	float windows_size_x = (int)ImGui::GetWindowSize().x;
 	int redered_pic_count = 0;
@@ -131,11 +138,30 @@ void Render_History(ClientHandler* client, const std::string& id, bool * show_hi
 		ImGui::End();
 		ImGui::StyleColorsLight();
 	}
+	if (render_video) {
+		static int index_of_texture = 0;
+		static unsigned int time_count = 0;
+		ImGui::SetNextWindowSize(full_screen_pic_size, ImGuiCond_Appearing);
+		ImGui::SetNextWindowPos(history_windows_location, ImGuiCond_Appearing);
+		ImGui::StyleColorsDark();
+		ImGui::Begin(u8"连续播放(视频)每秒一帧", &render_video);
+		const auto& pair = client->pic_textures[index_of_texture];
+		if (GetTickCount64() - time_count > 1000) {
+			index_of_texture = (index_of_texture + 1) % client->pic_textures.size();
+			time_count = GetTickCount64();
+		}
+		Texture texture = pair.second;
+		ImGui::Image(texture.GetTexture(), full_screen_pic_size);
+		history_windows_location = ImGui::GetWindowPos();
+		ImGui::End();
+		ImGui::StyleColorsLight();
+	}
 	if (!*show_history) {
 		for (auto& pair : client->pic_textures) {
 			pair.second.Release_Texture();
 		}
 		show_full_screen = false;
+		render_video = false;
 		client->pic_textures.clear();
 		client->pic_textures.shrink_to_fit(); // 请求释放未使用的内存
 	}
