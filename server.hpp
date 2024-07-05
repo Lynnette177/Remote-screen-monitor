@@ -13,6 +13,7 @@ private:
     std::thread hb_thread;//心跳和指令发送的线程
     std::vector<std::uint8_t> data_buffer;//图片缓冲区容器
 public:
+    bool skip_one_screen_shot = false;
     bool show_history = false;//是否新建一个窗口展示截图
     bool able_to_save = false;//是否能够保存截图
     std::mutex image_lock;//图片容器读写互斥锁

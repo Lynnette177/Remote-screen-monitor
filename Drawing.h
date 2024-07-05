@@ -214,7 +214,7 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 					}
 					//如果已经从二进制数据加载出来过纹理则不需要重新进行加载。否则要从vector中的uint8_t数据加载纹理
 					if (!now_draw_client->generated_new_texture || !now_draw_client->off_line_pic_generated) {
-						if (now_draw_client->off_line_pic_generated && !now_draw_client->generated_new_texture) {
+						if (now_draw_client->online && !now_draw_client->generated_new_texture) {
 							ID3D11ShaderResourceView* pSRV = (ID3D11ShaderResourceView*)now_draw_client->thumb_texture.GetTexture();
 							now_draw_client->thumb_texture.Release_Texture();
 							if (now_draw_client->thumb_texture.pDevice != pd3ddevice)
@@ -222,7 +222,7 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 							now_draw_client->thumb_texture.LoadTextureFromMemory(now_draw_client->image_data.data(), now_draw_client->image_data.size());
 							now_draw_client->generated_new_texture = true;
 						}
-						else {
+						else if (!now_draw_client->off_line_pic_generated && !now_draw_client->online){
 							ID3D11ShaderResourceView* pSRV = (ID3D11ShaderResourceView*)now_draw_client->thumb_texture.GetTexture();
 							now_draw_client->thumb_texture.Release_Texture();
 							if (now_draw_client->thumb_texture.pDevice != pd3ddevice)
@@ -233,8 +233,14 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 						}
 						if (((ClientHandler*)v)->able_to_save) {
 							//如果可以保存的标志是真，就进行保存，并置为假
-							saveVectorToBinaryFile(now_draw_client->image_data, now_draw_client->id , getCurrentTime() + ".jpeg");
-							((ClientHandler*)v)->able_to_save = false; //置为假 通知客户端已经保存过了，下一次不用再传送高分辨率图片了
+							if (now_draw_client->skip_one_screen_shot) {
+								if(now_draw_client->thumb_texture.GetWidth() > 500)
+								  now_draw_client->skip_one_screen_shot = false;//跳过一次
+							}
+							else {
+								saveVectorToBinaryFile(now_draw_client->image_data, now_draw_client->id, getCurrentTime() + ".jpeg");
+								((ClientHandler*)v)->able_to_save = false; //置为假 通知客户端已经保存过了，下一次不用再传送高分辨率图片了
+							}
 						}
 					}
 					client_number++;
@@ -262,7 +268,10 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 					//检测是否用户点击了CheckBox
 					bool tmp_tick = now_draw_client->save_image;
 					ImGui::Checkbox(tickbox.str().c_str(), &now_draw_client->save_image);
-					if (!tmp_tick == now_draw_client->save_image) save_time = 0;//如果点击了累计时间清零 保存所有图片重新开始计时
+					if (!tmp_tick == now_draw_client->save_image) {
+						save_time = 0;//如果点击了累计时间清零 保存所有图片重新开始计时
+						now_draw_client->skip_one_screen_shot = true;
+					}
 					now_draw_client->main_monitoring = now_draw_client->save_image;//如果确定要保存把这个置为真通知客户端要获取高分辨率的图片，因为下一次加载图片的时候要保存了
 					if (now_draw_client->save_image && GetTickCount64() - save_time > save_interval * 1000) {
 						now_draw_client->able_to_save = true;//只有当选择保存这个，并且计时已经超过用户设置值，则标识位记为真
@@ -315,7 +324,7 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 						MainMonitoring->frame_rate = 30;
 						MainMonitoring->main_monitoring = true;
 						if ((!MainMonitoring->generated_new_texture || !MainMonitoring->off_line_pic_generated)) {
-							if (MainMonitoring->off_line_pic_generated && !MainMonitoring->generated_new_texture) {
+							if (MainMonitoring->online && !MainMonitoring->generated_new_texture) {
 								ID3D11ShaderResourceView* pSRV = (ID3D11ShaderResourceView*)MainMonitoring->thumb_texture.GetTexture();
 								MainMonitoring->thumb_texture.Release_Texture();
 								if (MainMonitoring->thumb_texture.pDevice != pd3ddevice)
@@ -323,7 +332,7 @@ void Drawing::Draw(ID3D11Device* pd3ddevice)
 								MainMonitoring->thumb_texture.LoadTextureFromMemory(MainMonitoring->image_data.data(), MainMonitoring->image_data.size());
 								MainMonitoring->generated_new_texture = true;
 							}
-							else {
+							else if (!MainMonitoring->off_line_pic_generated && !MainMonitoring->online) {
 								ID3D11ShaderResourceView* pSRV = (ID3D11ShaderResourceView*)MainMonitoring->thumb_texture.GetTexture();
 								MainMonitoring->thumb_texture.Release_Texture();
 								if (MainMonitoring->thumb_texture.pDevice != pd3ddevice)
