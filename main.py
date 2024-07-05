@@ -165,6 +165,8 @@ def heart_beat():  # 发送心跳，接收指令
                         global_frame_rate = frame_rate
                     if part2 == 'M':
                         screen_shots.main_monitoring = True
+                    else:
+                        screen_shots.main_monitoring = False
                     break
             time.sleep(0.2)
     except Exception as e:
