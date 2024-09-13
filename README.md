@@ -3,8 +3,12 @@
 服务端UI基于DearImGui  
 功能：  
 多客户端维护/在线状态检测/全屏检测/历史记录/鼠标远控/在线与离线颜色不同  
-Description: This is a project about remote desktop monitoring using the client-server (C/S) model. The server side can monitor multiple client desktops, while the client side sends desktop screenshots to the server at fixed intervals. This can be used in scenarios such as monitoring students during computer lab sessions.
+客户端见Client分支  
 
+Description: This is a project about remote desktop monitoring using the client-server (C/S) model. The server side can monitor multiple client desktops, while the client side sends desktop screenshots to the server at fixed intervals. This can be used in scenarios such as monitoring students during computer lab sessions.  
+For Clients pls check the client branch.  
+  
+Server:  
 UI is based on Dear-ImGui  
 Support multi clients.  
 Online-status check/ mouse control/ full screen monitor/ history pics/ auto(also changeable) frame rates  
